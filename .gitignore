@@ -1,0 +1,18 @@
+data/
+outputs/
+logs/
+results/
+__pycache__/
+# pretrained_LCP/
+.idea
+*/.ipynb_checkpoints
+*.tc.*
+*.tc_backward.*
+*.log
+*.bak
+temp.py
+temp.ipynb
+pretrained_LCP/
+desktop.ini
+
+

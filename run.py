@@ -170,7 +170,7 @@ def run(opts):
     else:
         start_time = time()
         if opts.FI_train:
-            filename = 'data/FI_train_tsp/200_FI_seed1235.pkl'
+            filename = opts.FI_path
             train_dataset = problem.make_dataset(
                 filename = filename)
             print('----load training samples from {}----'.format(filename))

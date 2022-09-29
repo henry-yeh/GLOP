@@ -1,20 +1,14 @@
 import math
 import torch
-import os
 import argparse
 import numpy as np
-import itertools
 from tqdm import tqdm
-from utils import load_model, move_to
-from utils.data_utils import save_dataset
+from utils import load_model
 from torch.utils.data import DataLoader
 import time
-from datetime import timedelta
 from utils.functions import parse_softmax_temperature
 from utils.functions import reconnect
 from utils.functions import load_problem
-from nets.attention_model import set_decode_type
-from setuptools.dist import sequence
 from problems.tsp.tsp_baseline import solve_insertion
 
 mp = torch.multiprocessing.get_context('spawn')
@@ -53,7 +47,7 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
     for reviser_size in revision_lens:
         reviser_path = f'pretrained_LCP/Reviser-3-scale/reviser_{reviser_size}/epoch-199.pt'
         if reviser_size in [20]:
-            reviser_path = f'pretrained_LCP/Reviser-6-scale/reviser_{reviser_size}/epoch-199.pt'
+            reviser_path = f'pretrained_LCP/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
         reviser, _ = load_model(reviser_path, is_local=True, mtl=False)
         revisers.append(reviser)
 
@@ -109,9 +103,6 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers):
             
             pi_batch = pi_batch.to(device)
 
-            # roll_pi = [torch.roll(pi, i, 1) for i in range(opts.width)]
-            # pi = torch.cat(roll_pi, dim=0)
-
             batch = batch.to(device)
             # batch = instance.repeat(width, 1, 1)
 
@@ -159,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=2,
                         help="Softmax temperature (sampling or bs)")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[100,50,20], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[0,0,20], type=int)
     parser.add_argument('--problem', default='tsp', type=str)
     parser.add_argument('--decode_strategy', type=str, default='sample', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')

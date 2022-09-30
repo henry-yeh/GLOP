@@ -39,25 +39,38 @@ def get_best(sequences, cost, ids=None, batch_size=None):
 
 
 def eval_dataset(dataset_path, width, softmax_temp, opts):
-    # Even with multiprocessing, we load the model here since it contains the name where to write results
-    # seeder, _ = load_model(opts.seeder)
-    revisers = []
-    assert opts.problem == 'tsp'
-    revision_lens = opts.revision_lens
-    for reviser_size in revision_lens:
-        reviser_path = f'pretrained_LCP/Reviser-3-scale/reviser_{reviser_size}/epoch-199.pt'
-        if reviser_size in [20]:
-            reviser_path = f'pretrained_LCP/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
-        reviser, _ = load_model(reviser_path, is_local=True, mtl=False)
-        revisers.append(reviser)
-
     use_cuda = torch.cuda.is_available() and not opts.no_cuda
     device = torch.device("cuda:0" if use_cuda else "cpu")
-    dataset = reviser.problem.make_dataset(filename=dataset_path, num_samples=opts.val_size, offset=opts.offset)
-    results = _eval_dataset(dataset, width, softmax_temp, opts, device, revisers=revisers)
 
-    # This is parallelism, even if we use multiprocessing (we report as if we did not use multiprocessing, e.g. 1 GPU)
-    parallelism = opts.eval_batch_size
+    revisers = []
+    revisers2 = []
+    assert opts.problem == 'tsp'
+    revision_lens = opts.revision_lens
+    revision_lens2 = opts.revision_lens2
+
+    for reviser_size in revision_lens:
+        reviser_path = f'pretrained_LCP/constructions/Reviser-3-scale/reviser_{reviser_size}/epoch-199.pt'
+        if reviser_size in [20]:
+            reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
+        reviser, _ = load_model(reviser_path, is_local=True)
+        revisers.append(reviser)
+        
+    for reviser in revisers:
+        reviser.to(device)
+        reviser.eval()
+        reviser.set_decode_type("greedy")
+    
+    for revision_size in revision_lens2:
+        _path = f'pretrained_LCP/improvements/C1/TSP{revision_size}-model-198.pt'
+        if revision_size == 20:
+            _path = 'pretrained_LCP/improvements/C2/TSP20-model-6.pt'
+        reviser2 = torch.load(_path, map_location=device)
+        reviser2.eval()
+        print('  [*] Loading improvement model from {}'.format(_path))
+        revisers2.append(reviser2)
+
+    dataset = reviser.problem.make_dataset(filename=dataset_path, num_samples=opts.val_size, offset=opts.offset)
+    results = _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers2)
 
     costs, costs_revised, tours, durations = zip(*results)  # Not really costs since they should be negative
     
@@ -73,12 +86,7 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
     return costs, tours, durations
 
 
-def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers):
-    
-    for reviser in revisers:
-        reviser.to(device)
-        reviser.eval()
-        reviser.set_decode_type("greedy")
+def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers2):
 
     dataloader = DataLoader(dataset, batch_size=opts.eval_batch_size)
 
@@ -118,7 +126,8 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers):
                                         batch=batch,
                                         pi_batch=pi_batch,
                                         opts=opts,
-                                        revisers=revisers
+                                        revisers=revisers,
+                                        revisers2=revisers2
                                         )
             # tours shape: problem_size, 2
             # costs: costs before revision
@@ -150,7 +159,9 @@ if __name__ == "__main__":
     parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=2,
                         help="Softmax temperature (sampling or bs)")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[0,0,20], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[0,0,0], type=int)
+    parser.add_argument('--revision_lens2', nargs='+', default=[100,50,20] ,type=int)
+    parser.add_argument('--revision_iters2', nargs='+', default=[0,0,2], type=int)
     parser.add_argument('--problem', default='tsp', type=str)
     parser.add_argument('--decode_strategy', type=str, default='sample', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')
@@ -161,7 +172,11 @@ if __name__ == "__main__":
     parser.add_argument('--results_dir', default='results', help="Name of results directory")
     parser.add_argument('--multiprocessing', action='store_true',
                         help='Use multiprocessing to parallelize over multiple GPUs')
-
+    parser.add_argument('--n_steps', default=20, type=int, help='Number of steps in each episode')
+    parser.add_argument('--disable_improve', action='store_true', help='Disable improvement revisions')
+    parser.add_argument('--improve_shift', default=10, type=int,
+           help='The length of tour shift when each time decomposing for improvement')
+    
     opts = parser.parse_args()
 
     assert opts.o is None or (len(opts.datasets) == 1 and len(opts.width) <= 1), \

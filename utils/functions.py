@@ -9,6 +9,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 from multiprocessing import Pool
 import torch.nn.functional as F
 import math
+from improvement.TSPEnvironment import TSPInstanceEnv, VecEnv
 
 def load_problem(name):
     from problems import TSP, CVRP, SDVRP, OP, PCTSPDet, PCTSPStoch,LOCAL
@@ -110,10 +111,8 @@ def load_args(filename):
     return args
 
 
-def load_model(path, epoch=None, is_local=True, mtl=False):
+def load_model(path, epoch=None, is_local=True):
     from nets.attention_model import AttentionModel
-    
-    from nets.pointer_network import PointerNetwork
 
     if os.path.isfile(path):
         model_filename = path
@@ -135,57 +134,24 @@ def load_model(path, epoch=None, is_local=True, mtl=False):
 
     
     if is_local:
-        if mtl:
-            from nets.attention_mtl import AttentionModel
-            model= AttentionModel(
-            args['embedding_dim'],
-            args['hidden_dim'],
-            load_problem('local'),
-            n_encode_layers=args['n_encode_layers'],
-            mask_inner=True,
-            mask_logits=True,
-            normalization=args['normalization'],
-            tanh_clipping=args['tanh_clipping'],
-            checkpoint_encoder=args.get('checkpoint_encoder', False),
-            shrink_size=args.get('shrink_size', None),
-            context_dim=args['context_dim']
-        )
-        else:
-            from nets.attention_local import AttentionModel
-            model= AttentionModel(
-            args['embedding_dim'],
-            args['hidden_dim'],
-            load_problem('local'),
-            n_encode_layers=args['n_encode_layers'],
-            mask_inner=True,
-            mask_logits=True,
-            normalization=args['normalization'],
-            tanh_clipping=args['tanh_clipping'],
-            checkpoint_encoder=args.get('checkpoint_encoder', False),
-            shrink_size=args.get('shrink_size', None),
-        )
+
+        from nets.attention_local import AttentionModel
+        model= AttentionModel(
+        args['embedding_dim'],
+        args['hidden_dim'],
+        load_problem('local'),
+        n_encode_layers=args['n_encode_layers'],
+        mask_inner=True,
+        mask_logits=True,
+        normalization=args['normalization'],
+        tanh_clipping=args['tanh_clipping'],
+        checkpoint_encoder=args.get('checkpoint_encoder', False),
+        shrink_size=args.get('shrink_size', None),
+    )
 
     else:
         raise NotImplementedError
-        problem = load_problem(args['problem']) 
-        model_class = {
-            'attention': AttentionModel,
-            'pointer': PointerNetwork
-        }.get(args.get('model', 'attention'), None)
-        assert model_class is not None, "Unknown model: {}".format(model_class)
-    
-        model = model_class(
-            args['embedding_dim'],
-            args['hidden_dim'],
-            problem,
-            n_encode_layers=args['n_encode_layers'],
-            mask_inner=True,
-            mask_logits=True,
-            normalization=args['normalization'],
-            tanh_clipping=args['tanh_clipping'],
-            checkpoint_encoder=args.get('checkpoint_encoder', False),
-            shrink_size=args.get('shrink_size', None)
-        )
+
     # Overwrite model parameters by parameters to load
     load_data = torch_load_cpu(model_filename)
     model.load_state_dict({**model.state_dict(), **load_data.get('model', {})})
@@ -285,7 +251,9 @@ def LCP_TSP(
     cost_func,
     reviser,
     revision_len,
-    revision_iter
+    revision_iter,
+    mood,
+    opts
     ):
     
     # width, problem_size, 2 (for TSP)
@@ -293,18 +261,31 @@ def LCP_TSP(
 
 
     offset = num_nodes % revision_len
-    if torch.cuda.is_available():
-        original_subtour = torch.arange(0, revision_len, dtype=torch.long).cuda()
-    else:
-        original_subtour = torch.arange(0, revision_len, dtype=torch.long)
+
     for _ in range(revision_iter):
-        decomposed_seeds, offset_seed = decomposition(seeds, 
-                                                    coordinate_dim,
-                                                    revision_len,
-                                                    offset
-                                                    )
+        if mood == 'construct':
+            decomposed_seeds, offset_seed = decomposition(seeds, 
+                                            coordinate_dim,
+                                            revision_len,
+                                            offset
+                                            )
+            if torch.cuda.is_available():
+                original_subtour = torch.arange(0, revision_len, dtype=torch.long).cuda()
+            else:
+                original_subtour = torch.arange(0, revision_len, dtype=torch.long)
         
-        decomposed_seeds_revised = revision(cost_func, reviser, decomposed_seeds, original_subtour)
+            decomposed_seeds_revised = revision(cost_func, reviser, decomposed_seeds, original_subtour)
+        
+        elif mood == 'improve':
+            decomposed_seeds, offset_seed = decomposition(seeds, 
+                                coordinate_dim,
+                                revision_len,
+                                offset,
+                                shift_len=opts.improve_shift
+                                )
+            print('decomposed seeds', decomposed_seeds.shape)
+                                
+            decomposed_seeds_revised = improve(reviser, decomposed_seeds, opts.n_steps)
 
         seeds = decomposed_seeds_revised.reshape(batch_size, -1, coordinate_dim)
 
@@ -313,6 +294,74 @@ def LCP_TSP(
     return seeds
 
 
+def improve(reviser, decomposed_seeds, n_steps):
+    # coordinate transformation
+    max_x, indices_max_x = decomposed_seeds[:,:,0].max(dim=1)
+    max_y, indices_max_y = decomposed_seeds[:,:,1].max(dim=1)
+    min_x, indices_min_x = decomposed_seeds[:,:,0].min(dim=1)
+    min_y, indices_min_y = decomposed_seeds[:,:,1].min(dim=1)
+    # shapes: (batch_size, ); (batch_size, )
+    
+    diff_x = max_x - min_x
+    diff_y = max_y - min_y
+    xy_exchanged = diff_y > diff_x
+
+    # shift to zero
+    decomposed_seeds[:, :, 0] -= (min_x).unsqueeze(-1)
+    decomposed_seeds[:, :, 1] -= (min_y).unsqueeze(-1)
+
+    # exchange coordinates for those diff_y > diff_x
+    decomposed_seeds[xy_exchanged, :, 0], decomposed_seeds[xy_exchanged, :, 1] =  decomposed_seeds[xy_exchanged, :, 1], decomposed_seeds[xy_exchanged, :, 0]
+    
+    # scale to (0, 1)
+    scale_degree = torch.max(diff_x, diff_y)
+    scale_degree = scale_degree.view(decomposed_seeds.shape[0], 1, 1)
+    decomposed_seeds /= scale_degree
+
+    # transformation done
+
+    b_sample = decomposed_seeds.clone().detach().numpy()
+    sum_reward = 0
+    bs, ps, _ = b_sample.shape
+    env = VecEnv(TSPInstanceEnv,
+                 b_sample.shape[0],
+                 ps)
+    state, initial_distance, best_state = env.reset(b_sample)
+    t = 0
+    hidden = None
+    while t < n_steps:
+        print(t, end=' ')
+        state = torch.from_numpy(state).float()
+        best_state = torch.from_numpy(best_state).float()
+        if torch.cuda.is_available():
+            state = state.cuda()
+            best_state = best_state.cuda()
+        with torch.no_grad():
+            _, action, _, _, _, hidden = reviser(state, best_state, hidden)
+        action = action.cpu().numpy()
+        state, reward, _, best_distance, distance, best_state = env.step(action)
+        # state shape: (bs, ps, 2)
+        sum_reward += reward
+        t += 1
+        print(np.mean(best_distance, axis=0))
+
+    avg_best_distances = np.mean(best_distance, axis=0)
+    avg_initial_distances = np.mean(initial_distance, axis=0)
+    print('avg. initial Cost: {}; avg. best Cost: {}'.format(
+    avg_initial_distances/10000, avg_best_distances/10000))
+
+    best_state = torch.from_numpy(best_state).float()
+    if torch.cuda.is_available():
+        best_state = best_state.cuda()
+    
+    # transform the coordinates back
+    best_state[xy_exchanged, :, 0], best_state[xy_exchanged, :, 1] =  best_state[xy_exchanged, :, 1], best_state[xy_exchanged, :, 0]
+    best_state *= scale_degree
+    best_state[:, :, 0] += (min_x).unsqueeze(-1)
+    best_state[:, :, 1] += (min_y).unsqueeze(-1)
+
+    return best_state
+
 def reconnect( 
         get_cost_func, 
         get_cost_func2,
@@ -320,6 +369,7 @@ def reconnect(
         pi_batch, 
         opts, 
         revisers,
+        revisers2
     ):
     cost, _ = get_cost_func(batch, pi_batch)
 
@@ -340,13 +390,33 @@ def reconnect(
             get_cost_func2,
             revisers[revision_id],
             opts.revision_lens[revision_id],
-            opts.revision_iters[revision_id]
+            opts.revision_iters[revision_id],
+            mood='construct',
+            opts = opts
             )
         
-
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
         
         print(f'after revision {revision_id}', cost_revised.mean().item())
+    
+
+    if not opts.disable_improve:
+    
+        for revision_id in range(len(revisers2)):
+            seed = LCP_TSP(
+                seed, 
+                get_cost_func2,
+                revisers2[revision_id],
+                opts.revision_lens2[revision_id],
+                opts.revision_iters2[revision_id],
+                mood='improve',
+                opts = opts
+                )
+        
+
+            cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
+            
+            print(f'after revision {revision_id}', cost_revised.mean().item())
 
     return seed, cost, cost_revised
 

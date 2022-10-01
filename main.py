@@ -50,8 +50,10 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
 
     for reviser_size in revision_lens:
         reviser_path = f'pretrained_LCP/constructions/Reviser-3-scale/reviser_{reviser_size}/epoch-199.pt'
-        if reviser_size in [20]:
+        if reviser_size == 20:
             reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
+        if reviser_size == 50:
+            reviser_path = f'pretrained_LCP/constructions/Reviser-6-scale/reviser_{reviser_size}/epoch-400.pt'
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
         
@@ -62,8 +64,6 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
     
     for revision_size in revision_lens2:
         _path = f'pretrained_LCP/improvements/C1/TSP{revision_size}-model-198.pt'
-        if revision_size == 20:
-            _path = 'pretrained_LCP/improvements/C2/TSP20-model-6.pt'
         reviser2 = torch.load(_path, map_location=device)
         reviser2.eval()
         print('  [*] Loading improvement model from {}'.format(_path))
@@ -159,9 +159,9 @@ if __name__ == "__main__":
     parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=2,
                         help="Softmax temperature (sampling or bs)")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[0,0,0], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[100,50,20], type=int)
     parser.add_argument('--revision_lens2', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters2', nargs='+', default=[0,0,2], type=int)
+    parser.add_argument('--revision_iters2', nargs='+', default=[0,0,0], type=int)
     parser.add_argument('--problem', default='tsp', type=str)
     parser.add_argument('--decode_strategy', type=str, default='sample', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')

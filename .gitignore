@@ -3,7 +3,6 @@ outputs/
 logs/
 results/
 __pycache__/
-# pretrained_LCP/
 .idea
 */.ipynb_checkpoints
 *.tc.*

@@ -320,7 +320,7 @@ def improve(reviser, decomposed_seeds, n_steps):
 
     # transformation done
 
-    b_sample = decomposed_seeds.clone().detach().numpy()
+    b_sample = decomposed_seeds.cpu().clone().detach().numpy()
     sum_reward = 0
     bs, ps, _ = b_sample.shape
     env = VecEnv(TSPInstanceEnv,

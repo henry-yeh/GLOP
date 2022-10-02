@@ -53,7 +53,7 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
         if reviser_size == 20:
             reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
         if reviser_size == 50:
-            reviser_path = f'pretrained_LCP/constructions/Reviser-6-scale/reviser_{reviser_size}/epoch-400.pt'
+            reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
         
@@ -146,7 +146,7 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers
 if __name__ == "__main__":
  
     parser = argparse.ArgumentParser()
-    parser.add_argument("--problem_size", type=int, default=200)
+    parser.add_argument("--problem_size", type=int, default=50)
     parser.add_argument("--problem_type", type=str, default='tsp')
     parser.add_argument("-f", action='store_true', help="Set true to overwrite")
     parser.add_argument("-o", default=None, help="Name of the results file to write")
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=2,
                         help="Softmax temperature (sampling or bs)")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[100,50,20], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[0,50,20], type=int)
     parser.add_argument('--revision_lens2', nargs='+', default=[100,50,20] ,type=int)
     parser.add_argument('--revision_iters2', nargs='+', default=[0,0,0], type=int)
     parser.add_argument('--problem', default='tsp', type=str)
@@ -182,6 +182,5 @@ if __name__ == "__main__":
     assert opts.o is None or (len(opts.datasets) == 1 and len(opts.width) <= 1), \
         "Cannot specify result filename with more than one dataset or more than one width"
 
-
-    dataset_path = f'data/tsp/tsp{opts.problem_size}_test_seed1234.pkl'
+    dataset_path = f'data/tsp/tsp{opts.problem_size}_test.pkl'
     eval_dataset(dataset_path, opts.width, opts.softmax_temperature, opts)

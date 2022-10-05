@@ -10,6 +10,7 @@ from multiprocessing import Pool
 import torch.nn.functional as F
 import math
 from improvement.TSPEnvironment import TSPInstanceEnv, VecEnv
+import time
 
 def load_problem(name):
     from problems import TSP, CVRP, SDVRP, OP, PCTSPDet, PCTSPStoch,LOCAL
@@ -385,6 +386,8 @@ def reconnect(
     print('cost before revision:', cost.mean().item())
     
     for revision_id in range(len(revisers)):
+        start_time = time.time()
+
         seed = LCP_TSP(
             seed, 
             get_cost_func2,
@@ -396,12 +399,20 @@ def reconnect(
             )
         
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
+        if opts.aug:
+            cost_revised, _ = cost_revised.reshape(4, opts.eval_batch_size).min(0)
+
+        duration = time.time() - start_time
+
+        print(f'after revision {revision_id}', cost_revised.mean().item(), f'duration {duration}')
         
-        print(f'after revision {revision_id}', cost_revised.mean().item())
-    
+
+
+        
 
     if not opts.disable_improve:
-    
+        
+        start_time = time.time()
         for revision_id in range(len(revisers2)):
             seed = LCP_TSP(
                 seed, 
@@ -413,10 +424,11 @@ def reconnect(
                 opts = opts
                 )
         
-
+            duration = time.time() - start_time
             cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-            
-            print(f'after revision {revision_id}', cost_revised.mean().item())
+            if opts.aug:
+                cost_revised, _ = cost_revised.reshape(4, opts.eval_batch_size).min(0)
+            print(f'after revision {revision_id}', cost_revised.mean().item(), f'duration {duration}')
 
     return seed, cost, cost_revised
 

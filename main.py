@@ -112,7 +112,14 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers
             pi_batch = pi_batch.to(device)
 
             batch = batch.to(device)
-            # batch = instance.repeat(width, 1, 1)
+
+            if opts.aug:
+                batch2 = torch.cat((1 - batch[:, :, [0]], batch[:, :, [1]]), dim=2)
+                batch3 = torch.cat((batch[:, :, [0]], 1 - batch[:, :, [1]]), dim=2)
+                batch4 = torch.cat((1 - batch[:, :, [0]], 1 - batch[:, :, [1]]), dim=2)
+                batch = torch.cat((batch, batch2, batch3, batch4), dim=0)
+
+                pi_batch = pi_batch.repeat(4, 1)
 
             # needed shape: (width, graph_size, 2) / (width, graph_size)
             problem = load_problem(opts.problem_type)
@@ -150,24 +157,25 @@ if __name__ == "__main__":
     parser.add_argument("--problem_type", type=str, default='tsp')
     parser.add_argument("-f", action='store_true', help="Set true to overwrite")
     parser.add_argument("-o", default=None, help="Name of the results file to write")
-    parser.add_argument('--val_size', type=int, default=128,
+    parser.add_argument('--val_size', type=int, default=5,
                         help='Number of instances used for reporting validation performance')
     parser.add_argument('--offset', type=int, default=0,
                         help='Offset where to start in dataset (default 0)')
-    parser.add_argument('--eval_batch_size', type=int, default=128,
+    parser.add_argument('--eval_batch_size', type=int, default=5,
                         help="Batch size to use during (baseline) evaluation")
     parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=2,
                         help="Softmax temperature (sampling or bs)")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[0,100,20], type=int)
-    parser.add_argument('--revision_lens2', nargs='+', default=[100,50] ,type=int)
-    parser.add_argument('--revision_iters2', nargs='+', default=[0,5,0], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[0,0,2], type=int)
+    parser.add_argument('--revision_lens2', nargs='+', default=[] ,type=int)
+    parser.add_argument('--revision_iters2', nargs='+', default=[], type=int)
     parser.add_argument('--problem', default='tsp', type=str)
     parser.add_argument('--decode_strategy', type=str, default='sample', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
     parser.add_argument('--compress_mask', action='store_true', help='Compress mask into long')
+    parser.add_argument('--aug', action='store_true', help='Apply instance augmentation')
     parser.add_argument('--max_calc_batch_size', type=int, default=10000, help='Size for subbatches')
     parser.add_argument('--results_dir', default='results', help="Name of results directory")
     parser.add_argument('--multiprocessing', action='store_true',

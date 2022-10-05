@@ -49,11 +49,9 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
     revision_lens2 = opts.revision_lens2
 
     for reviser_size in revision_lens:
-        reviser_path = f'pretrained_LCP/constructions/Reviser-3-scale/reviser_{reviser_size}/epoch-199.pt'
-        if reviser_size == 20:
-            reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
-        if reviser_size == 50:
-            reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}new/epoch-299.pt'
+        reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
+        if reviser_size in [50, 100]:
+            reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-299.pt'
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
         
@@ -153,20 +151,20 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers
 if __name__ == "__main__":
  
     parser = argparse.ArgumentParser()
-    parser.add_argument("--problem_size", type=int, default=50)
+    parser.add_argument("--problem_size", type=int, default=200)
     parser.add_argument("--problem_type", type=str, default='tsp')
     parser.add_argument("-f", action='store_true', help="Set true to overwrite")
     parser.add_argument("-o", default=None, help="Name of the results file to write")
-    parser.add_argument('--val_size', type=int, default=5,
+    parser.add_argument('--val_size', type=int, default=128,
                         help='Number of instances used for reporting validation performance')
     parser.add_argument('--offset', type=int, default=0,
                         help='Offset where to start in dataset (default 0)')
-    parser.add_argument('--eval_batch_size', type=int, default=5,
+    parser.add_argument('--eval_batch_size', type=int, default=128,
                         help="Batch size to use during (baseline) evaluation")
     parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=2,
                         help="Softmax temperature (sampling or bs)")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[0,0,2], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[100,0,0], type=int)
     parser.add_argument('--revision_lens2', nargs='+', default=[] ,type=int)
     parser.add_argument('--revision_iters2', nargs='+', default=[], type=int)
     parser.add_argument('--problem', default='tsp', type=str)

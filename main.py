@@ -112,12 +112,14 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers
             batch = batch.to(device)
 
             if opts.aug:
+                batch = torch.cat([torch.roll(batch, i, -1) for i in range(opts.aug_shift)], dim=0)
                 batch2 = torch.cat((1 - batch[:, :, [0]], batch[:, :, [1]]), dim=2)
                 batch3 = torch.cat((batch[:, :, [0]], 1 - batch[:, :, [1]]), dim=2)
                 batch4 = torch.cat((1 - batch[:, :, [0]], 1 - batch[:, :, [1]]), dim=2)
                 batch = torch.cat((batch, batch2, batch3, batch4), dim=0)
 
-                pi_batch = pi_batch.repeat(4, 1)
+                pi_batch = pi_batch.repeat(4*opts.aug_shift, 1)
+                print('batch shape after augmentation:', batch.shape)
 
             # needed shape: (width, graph_size, 2) / (width, graph_size)
             problem = load_problem(opts.problem_type)
@@ -182,6 +184,7 @@ if __name__ == "__main__":
     parser.add_argument('--disable_improve', action='store_true', help='Disable improvement revisions')
     parser.add_argument('--improve_shift', default=10, type=int,
            help='The length of tour shift when each time decomposing for improvement')
+    parser.add_argument('--aug_shift', default=20, type=int, help='')
     
     opts = parser.parse_args()
 

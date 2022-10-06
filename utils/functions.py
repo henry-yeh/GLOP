@@ -331,7 +331,6 @@ def improve(reviser, decomposed_seeds, n_steps):
     t = 0
     hidden = None
     while t < n_steps:
-        print(t, end=' ')
         state = torch.from_numpy(state).float()
         best_state = torch.from_numpy(best_state).float()
         if torch.cuda.is_available():
@@ -344,7 +343,7 @@ def improve(reviser, decomposed_seeds, n_steps):
         # state shape: (bs, ps, 2)
         sum_reward += reward
         t += 1
-        print(np.mean(best_distance, axis=0))
+        # print(np.mean(best_distance, axis=0))
 
     avg_best_distances = np.mean(best_distance, axis=0)
     avg_initial_distances = np.mean(initial_distance, axis=0)
@@ -383,7 +382,7 @@ def reconnect(
     # seed shape (width, problem_size, 2)
 
     # mincosts, argmincosts = cost.min(0)
-    print('cost before revision:', cost.mean().item())
+    print('cost before revision:', cost.mean().item()) # not matter we use augmentation or not
     
     for revision_id in range(len(revisers)):
         start_time = time.time()
@@ -400,7 +399,7 @@ def reconnect(
         
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
         if opts.aug:
-            cost_revised, _ = cost_revised.reshape(4, opts.eval_batch_size).min(0)
+            cost_revised, _ = cost_revised.reshape(4*opts.aug_shift, opts.eval_batch_size).min(0)
 
         duration = time.time() - start_time
 
@@ -427,7 +426,7 @@ def reconnect(
             duration = time.time() - start_time
             cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
             if opts.aug:
-                cost_revised, _ = cost_revised.reshape(4, opts.eval_batch_size).min(0)
+                cost_revised, _ = cost_revised.reshape(4*opts.aug_shift, opts.eval_batch_size).min(0)
             print(f'after revision {revision_id}', cost_revised.mean().item(), f'duration {duration}')
 
     return seed, cost, cost_revised

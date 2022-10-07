@@ -368,23 +368,23 @@ def reconnect(
         get_cost_func, 
         get_cost_func2,
         batch,
-        pi_batch, 
         opts, 
         revisers,
         revisers2
     ):
-    cost, _ = get_cost_func(batch, pi_batch)
+    # cost, _ = get_cost_func(batch, pi_batch)
 
     # instance shape: (width, problem_size, 2)
     # pi shape: (width, problem_size), dtype: torch.int64
     # cost shape: (width, )
-    assert opts.problem =='tsp'
-    seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
+    # assert opts.problem =='tsp'
+    # seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
     # seed shape (width, problem_size, 2)
 
     # mincosts, argmincosts = cost.min(0)
-    print('cost before revision:', cost.mean().item()) # not matter we use augmentation or not
-    print()
+    # print('cost before revision:', cost.mean().item()) # not matter we use augmentation or not
+    # print()
+    seed = batch
 
     for revision_id in range(len(revisers)):
         start_time = time.time()
@@ -415,31 +415,31 @@ def reconnect(
 
     # print(seed.shape)
 
-    if not opts.disable_improve:
-        seed = seed.reshape(-1, opts.eval_batch_size, opts.problem_size, 2)
+    # if not opts.disable_improve:
+    #     seed = seed.reshape(-1, opts.eval_batch_size, opts.problem_size, 2)
     
-        # seed shape (width, bs, ps, 2)
-        seed = seed[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
+    #     # seed shape (width, bs, ps, 2)
+    #     seed = seed[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
 
-        start_time = time.time()
-        for revision_id in range(len(revisers2)):
-            seed = LCP_TSP(
-                seed, 
-                get_cost_func2,
-                revisers2[revision_id],
-                opts.revision_lens2[revision_id],
-                opts.revision_iters2[revision_id],
-                mood='improve',
-                opts = opts,
-                shift_len=opts.shift_lens2[revision_id]
-                )
+    #     start_time = time.time()
+    #     for revision_id in range(len(revisers2)):
+    #         seed = LCP_TSP(
+    #             seed, 
+    #             get_cost_func2,
+    #             revisers2[revision_id],
+    #             opts.revision_lens2[revision_id],
+    #             opts.revision_iters2[revision_id],
+    #             mood='improve',
+    #             opts = opts,
+    #             shift_len=opts.shift_lens2[revision_id]
+    #             )
         
-            duration = time.time() - start_time
-            cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
+    #         duration = time.time() - start_time
+    #         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
 
-            cost_revised, _ = cost_revised.reshape(-1, opts.eval_batch_size).min(0)
-            print(f'after improvement {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
-    return seed, cost, cost_revised
+    #         cost_revised, _ = cost_revised.reshape(-1, opts.eval_batch_size).min(0)
+    #         print(f'after improvement {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
+    return seed, cost_revised
 
 def sample_many():
     raise NotImplementedError

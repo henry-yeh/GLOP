@@ -50,19 +50,20 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
     revision_lens2 = opts.revision_lens2
 
     for reviser_size in revision_lens:
-        reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-199.pt'
+        reviser_path = f'pretrained_LCP/constructions/Reviser-6-scale/reviser_{reviser_size}/epoch-199.pt'
         if reviser_size in [50, 100]:
-            reviser_path = f'pretrained_LCP/constructions/Reviser-6-FI/reviser_{reviser_size}/epoch-299.pt'
+            reviser_path = f'pretrained_LCP/constructions/Reviser-6-scale/reviser_{reviser_size}/epoch-400.pt'
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
         
     for reviser in revisers:
         reviser.to(device)
         reviser.eval()
-        reviser.set_decode_type("greedy")
+        # reviser.set_decode_type("greedy")
+        reviser.set_decode_type("sampling")
     
     for revision_size in revision_lens2:
-        _path = f'pretrained_LCP/improvements/C2/TSP{revision_size}-model-30.pt'
+        _path = f'pretrained_LCP/improvements/C1/TSP{revision_size}-model-198.pt'
         reviser2 = torch.load(_path, map_location=device)
         reviser2.eval()
         print('  [*] Loading improvement model from {}'.format(_path))
@@ -101,59 +102,59 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers
         start = time.time()
         with torch.no_grad():
                 
-            pi_batch = torch.LongTensor(size=(opts.eval_batch_size, opts.problem_size))
+            if not opts.random_generate:
+                pi_batch = torch.LongTensor(size=(opts.eval_batch_size, opts.problem_size))
+                for instance_id, instance in enumerate(batch):
 
-            for instance_id, instance in enumerate(batch):
-
-                cost, pi, duration = solve_insertion(
-                                        directory=None, 
-                                        name=None, 
-                                        loc=instance,
-                                        method='farthest',
-                                        )
-                avg_cost += cost
-                pi_batch[instance_id] = torch.tensor(pi)
-            avg_cost /= opts.eval_batch_size
-
-            pi_batch = pi_batch
-            batch = batch
+                    cost, pi, duration = solve_insertion(
+                                            directory=None, 
+                                            name=None, 
+                                            loc=instance,
+                                            method='farthest',
+                                            )
+                    avg_cost += cost
+                    pi_batch[instance_id] = torch.tensor(pi)
+                avg_cost /= opts.eval_batch_size
+            else:
+                pi_batch = torch.stack([torch.randperm(opts.problem_size) for _ in range(opts.width*opts.eval_batch_size)])
+                batch = batch.repeat(opts.width, 1, 1)
             seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
             seed = seed.to(device)
+            if opts.random_generate:
+                avg_cost = ((seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)).mean()
         ##################################
             
-            start_time = time.time()
+            # start_time = time.time()
             
-            for revision_id in range(len(revisers2)):
-                seed = LCP_TSP(
-                    seed, 
-                    get_cost_func2,
-                    revisers2[revision_id],
-                    opts.revision_lens2[revision_id],
-                    opts.revision_iters2[revision_id],
-                    mood='improve',
-                    opts = opts,
-                    shift_len=opts.shift_lens2[revision_id]
-                    )
+            # for revision_id in range(len(revisers2)):
+            #     seed = LCP_TSP(
+            #         seed, 
+            #         get_cost_func2,
+            #         revisers2[revision_id],
+            #         opts.revision_lens2[revision_id],
+            #         opts.revision_iters2[revision_id],
+            #         mood='improve',
+            #         opts = opts,
+            #         shift_len=opts.shift_lens2[revision_id]
+            #         )
             
-                duration = time.time() - start_time
-                cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-
-                cost_revised, _ = cost_revised.reshape(-1, opts.eval_batch_size).min(0)
-                print(f'after improvement {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
+            #     duration = time.time() - start_time
+            #     cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
+            #     print(cost_revised)
+            #     cost_revised, _ = cost_revised.reshape(-1, opts.eval_batch_size).min(0)
+            #     print(f'after improvement {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
 
             ##############################################################
-            if opts.aug:
+            # if opts.aug:
                 
-                if opts.aug_shift > 1:
-                    # batch = torch.cat([torch.roll(batch, i, 1) for i in range(0, opts.aug_shift)], dim=0)
-                    # batch = batch.repeat(opts.aug_shift, 1, 1)
-                    seed = torch.cat([torch.roll(seed, i, 1) for i in range(0, opts.aug_shift)], dim=0)
-                seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
-                seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
-                seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
-                seed = torch.cat((seed, seed2, seed3, seed4), dim=0)
+            #     if opts.aug_shift > 1:
+            #         seed = torch.cat([torch.roll(seed, i, 1) for i in range(0, opts.aug_shift)], dim=0)
+            #     seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
+            #     seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
+            #     seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
+            #     seed = torch.cat((seed, seed2, seed3, seed4), dim=0)
                 
-                print('\n seed shape after augmentation:', seed.shape)
+            #     print('\n seed shape after augmentation:', seed.shape)
 
             # needed shape: (width, graph_size, 2) / (width, graph_size)
             
@@ -198,7 +199,6 @@ if __name__ == "__main__":
     parser.add_argument('--revision_iters', nargs='+', default=[10,25,20], type=int)
     parser.add_argument('--shift_lens', nargs='+', default=[10,2,1], type=int)
     parser.add_argument('--shift_lens2', nargs='+', default=[1], type=int)
-    parser.add_argument('--top_k', nargs='+', default=[1,1], type=float)
     parser.add_argument('--revision_lens2', nargs='+', default=[50] ,type=int)
     parser.add_argument('--revision_iters2', nargs='+', default=[1], type=int)
     parser.add_argument('--problem', default='tsp', type=str)
@@ -217,6 +217,7 @@ if __name__ == "__main__":
     parser.add_argument('--improve_shift', default=10, type=int,
            help='The length of tour shift when each time decomposing for improvement')
     parser.add_argument('--aug_shift', default=1, type=int, help='')
+    parser.add_argument('--random_generate', action='store_true')
     
     opts = parser.parse_args()
 

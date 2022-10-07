@@ -412,7 +412,7 @@ def reconnect(
         duration = time.time() - start_time
 
         print(f'after construction {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
-    print('cost_revised', cost_revised)
+
     # print(seed.shape)
 
     if not opts.disable_improve:

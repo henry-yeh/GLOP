@@ -61,7 +61,7 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
         reviser.set_decode_type("greedy")
     
     for revision_size in revision_lens2:
-        _path = f'pretrained_LCP/improvements/C1/TSP{revision_size}-model-198.pt'
+        _path = f'pretrained_LCP/improvements/C2/TSP{revision_size}-model-30.pt'
         reviser2 = torch.load(_path, map_location=device)
         reviser2.eval()
         print('  [*] Loading improvement model from {}'.format(_path))
@@ -161,20 +161,20 @@ if __name__ == "__main__":
     parser.add_argument("--problem_type", type=str, default='tsp')
     parser.add_argument("-f", action='store_true', help="Set true to overwrite")
     parser.add_argument("-o", default=None, help="Name of the results file to write")
-    parser.add_argument('--val_size', type=int, default=4,
+    parser.add_argument('--val_size', type=int, default=16,
                         help='Number of instances used for reporting validation performance')
     parser.add_argument('--offset', type=int, default=0,
                         help='Offset where to start in dataset (default 0)')
-    parser.add_argument('--eval_batch_size', type=int, default=4,
+    parser.add_argument('--eval_batch_size', type=int, default=16,
                         help="Batch size to use during (baseline) evaluation")
     parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=2,
                         help="Softmax temperature (sampling or bs)")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[10,1,1], type=int)
-    parser.add_argument('--shift_lens', nargs='+', default=[10,1,1], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[10,25,20], type=int)
+    parser.add_argument('--shift_lens', nargs='+', default=[10,2,1], type=int)
     parser.add_argument('--shift_lens2', nargs='+', default=[1], type=int)
     parser.add_argument('--top_k', nargs='+', default=[1,1], type=float)
-    parser.add_argument('--revision_lens2', nargs='+', default=[100] ,type=int)
+    parser.add_argument('--revision_lens2', nargs='+', default=[50] ,type=int)
     parser.add_argument('--revision_iters2', nargs='+', default=[1], type=int)
     parser.add_argument('--problem', default='tsp', type=str)
     parser.add_argument('--decode_strategy', type=str, default='sample', help='decode strategy of the model')

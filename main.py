@@ -73,7 +73,6 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
 
     costs, costs_revised, tours, durations = zip(*results)  # Not really costs since they should be negative
     
-    print(costs)
     costs = torch.tensor(costs)
     costs_revised = torch.cat(costs_revised, dim=0)
     tours = torch.cat(tours, dim=0)

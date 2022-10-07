@@ -9,6 +9,7 @@ import time
 from utils.functions import parse_softmax_temperature
 from utils.functions import reconnect
 from utils.functions import load_problem
+from utils.functions import LCP_TSP
 from problems.tsp.tsp_baseline import solve_insertion
 
 mp = torch.multiprocessing.get_context('spawn')
@@ -72,11 +73,12 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
 
     costs, costs_revised, tours, durations = zip(*results)  # Not really costs since they should be negative
     
-    costs = torch.cat(costs, dim=0)
+    print(costs)
+    costs = torch.tensor(costs)
     costs_revised = torch.cat(costs_revised, dim=0)
     tours = torch.cat(tours, dim=0)
 
-    print("Average cost: {} +- {}".format(costs.mean().item(), (2 * torch.std(costs) / math.sqrt(len(costs))).item()))
+    print("Average cost: {} +- {}".format(costs.mean(), (2 * torch.std(costs) / math.sqrt(len(costs))).item()))
     print("Average cost_revised: {} +- {}".format(costs_revised.mean().item(), (2 * torch.std(costs_revised) / math.sqrt(len(costs_revised))).item()))
     print("Total duration: {}".format(sum(durations)))
     print("Avg. duration: {}".format(sum(durations) / opts.val_size))
@@ -87,11 +89,16 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
 def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers2):
 
     dataloader = DataLoader(dataset, batch_size=opts.eval_batch_size)
+    problem = load_problem(opts.problem_type)
+    # cost function for complete solution
+    get_cost_func = lambda input, pi: problem.get_costs(input, pi)
+    # cost function for partial solution 
+    get_cost_func2 = lambda input, pi: problem.get_costs(input, pi, return_local=True)
 
     results = []
     for batch in tqdm(dataloader, disable=opts.no_progress_bar):
         # tsp batch shape: (bs, problem size, 2)
-
+        avg_cost = 0
         start = time.time()
         with torch.no_grad():
                 
@@ -105,37 +112,56 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers
                                         loc=instance,
                                         method='farthest',
                                         )
+                avg_cost += cost
                 pi_batch[instance_id] = torch.tensor(pi)
+            avg_cost /= opts.eval_batch_size
+
+            pi_batch = pi_batch
+            batch = batch
+            seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
+            seed = seed.to(device)
+        ##################################
             
-            pi_batch = pi_batch.to(device)
+            start_time = time.time()
+            
+            for revision_id in range(len(revisers2)):
+                seed = LCP_TSP(
+                    seed, 
+                    get_cost_func2,
+                    revisers2[revision_id],
+                    opts.revision_lens2[revision_id],
+                    opts.revision_iters2[revision_id],
+                    mood='improve',
+                    opts = opts,
+                    shift_len=opts.shift_lens2[revision_id]
+                    )
+            
+                duration = time.time() - start_time
+                cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
 
-            batch = batch.to(device)
+                cost_revised, _ = cost_revised.reshape(-1, opts.eval_batch_size).min(0)
+                print(f'after improvement {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
 
+            ##############################################################
             if opts.aug:
                 
                 if opts.aug_shift > 1:
                     # batch = torch.cat([torch.roll(batch, i, 1) for i in range(0, opts.aug_shift)], dim=0)
-                    batch = batch.repeat(opts.aug_shift, 1, 1)
-                    pi_batch = torch.cat([torch.roll(pi_batch, i, 1) for i in range(0, opts.aug_shift)], dim=0)
-                batch2 = torch.cat((1 - batch[:, :, [0]], batch[:, :, [1]]), dim=2)
-                batch3 = torch.cat((batch[:, :, [0]], 1 - batch[:, :, [1]]), dim=2)
-                batch4 = torch.cat((1 - batch[:, :, [0]], 1 - batch[:, :, [1]]), dim=2)
-                batch = torch.cat((batch, batch2, batch3, batch4), dim=0)
-
-                pi_batch = pi_batch.repeat(4, 1)
-                print('batch shape after augmentation:', batch.shape)
+                    # batch = batch.repeat(opts.aug_shift, 1, 1)
+                    seed = torch.cat([torch.roll(seed, i, 1) for i in range(0, opts.aug_shift)], dim=0)
+                seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
+                seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
+                seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
+                seed = torch.cat((seed, seed2, seed3, seed4), dim=0)
+                
+                print('\n seed shape after augmentation:', seed.shape)
 
             # needed shape: (width, graph_size, 2) / (width, graph_size)
-            problem = load_problem(opts.problem_type)
-            # cost function for complete solution
-            get_cost_func = lambda input, pi: problem.get_costs(input, pi)
-            # cost function for partial solution 
-            get_cost_func2 = lambda input, pi: problem.get_costs(input, pi, return_local=True)
-            tours, costs, costs_revised = reconnect(
+            
+            tours, costs_revised = reconnect(
                                         get_cost_func=get_cost_func, 
                                         get_cost_func2=get_cost_func2,
-                                        batch=batch,
-                                        pi_batch=pi_batch,
+                                        batch=seed,
                                         opts=opts,
                                         revisers=revisers,
                                         revisers2=revisers2
@@ -147,9 +173,9 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers
         duration = time.time() - start
 
         if costs_revised is not None:
-            results.append((costs, costs_revised, tours, duration))
+            results.append((avg_cost, costs_revised, tours, duration))
         else:
-            results.append((costs, None, tours, duration))
+            results.append((avg_cost, None, tours, duration))
 
     return results
 

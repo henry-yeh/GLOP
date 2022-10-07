@@ -61,7 +61,7 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
         reviser.set_decode_type("greedy")
     
     for revision_size in revision_lens2:
-        _path = f'pretrained_LCP/improvements/C2/TSP{revision_size}-model-30.pt'
+        _path = f'pretrained_LCP/improvements/C1/TSP{revision_size}-model-198.pt'
         reviser2 = torch.load(_path, map_location=device)
         reviser2.eval()
         print('  [*] Loading improvement model from {}'.format(_path))
@@ -78,7 +78,7 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
 
     print("Average cost: {} +- {}".format(costs.mean().item(), (2 * torch.std(costs) / math.sqrt(len(costs))).item()))
     print("Average cost_revised: {} +- {}".format(costs_revised.mean().item(), (2 * torch.std(costs_revised) / math.sqrt(len(costs_revised))).item()))
-    print("Total duration: {}".format(sum(durations) / len(durations)))
+    print("Total duration: {}".format(sum(durations)))
     print("Avg. duration: {}".format(sum(durations) / opts.val_size))
 
     return costs, tours, durations
@@ -112,13 +112,17 @@ def _eval_dataset(dataset, width, softmax_temp, opts, device, revisers, revisers
             batch = batch.to(device)
 
             if opts.aug:
-                batch = torch.cat([torch.roll(batch, i, -1) for i in range(opts.aug_shift)], dim=0)
+                
+                if opts.aug_shift > 1:
+                    # batch = torch.cat([torch.roll(batch, i, 1) for i in range(0, opts.aug_shift)], dim=0)
+                    batch = batch.repeat(opts.aug_shift, 1, 1)
+                    pi_batch = torch.cat([torch.roll(pi_batch, i, 1) for i in range(0, opts.aug_shift)], dim=0)
                 batch2 = torch.cat((1 - batch[:, :, [0]], batch[:, :, [1]]), dim=2)
                 batch3 = torch.cat((batch[:, :, [0]], 1 - batch[:, :, [1]]), dim=2)
                 batch4 = torch.cat((1 - batch[:, :, [0]], 1 - batch[:, :, [1]]), dim=2)
                 batch = torch.cat((batch, batch2, batch3, batch4), dim=0)
 
-                pi_batch = pi_batch.repeat(4*opts.aug_shift, 1)
+                pi_batch = pi_batch.repeat(4, 1)
                 print('batch shape after augmentation:', batch.shape)
 
             # needed shape: (width, graph_size, 2) / (width, graph_size)
@@ -157,18 +161,21 @@ if __name__ == "__main__":
     parser.add_argument("--problem_type", type=str, default='tsp')
     parser.add_argument("-f", action='store_true', help="Set true to overwrite")
     parser.add_argument("-o", default=None, help="Name of the results file to write")
-    parser.add_argument('--val_size', type=int, default=128,
+    parser.add_argument('--val_size', type=int, default=4,
                         help='Number of instances used for reporting validation performance')
     parser.add_argument('--offset', type=int, default=0,
                         help='Offset where to start in dataset (default 0)')
-    parser.add_argument('--eval_batch_size', type=int, default=128,
+    parser.add_argument('--eval_batch_size', type=int, default=4,
                         help="Batch size to use during (baseline) evaluation")
     parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=2,
                         help="Softmax temperature (sampling or bs)")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[100,0,0], type=int)
-    parser.add_argument('--revision_lens2', nargs='+', default=[] ,type=int)
-    parser.add_argument('--revision_iters2', nargs='+', default=[], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[10,1,1], type=int)
+    parser.add_argument('--shift_lens', nargs='+', default=[10,1,1], type=int)
+    parser.add_argument('--shift_lens2', nargs='+', default=[1], type=int)
+    parser.add_argument('--top_k', nargs='+', default=[1,1], type=float)
+    parser.add_argument('--revision_lens2', nargs='+', default=[100] ,type=int)
+    parser.add_argument('--revision_iters2', nargs='+', default=[1], type=int)
     parser.add_argument('--problem', default='tsp', type=str)
     parser.add_argument('--decode_strategy', type=str, default='sample', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')
@@ -184,7 +191,7 @@ if __name__ == "__main__":
     parser.add_argument('--disable_improve', action='store_true', help='Disable improvement revisions')
     parser.add_argument('--improve_shift', default=10, type=int,
            help='The length of tour shift when each time decomposing for improvement')
-    parser.add_argument('--aug_shift', default=20, type=int, help='')
+    parser.add_argument('--aug_shift', default=1, type=int, help='')
     
     opts = parser.parse_args()
 

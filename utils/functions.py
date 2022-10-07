@@ -254,7 +254,8 @@ def LCP_TSP(
     revision_len,
     revision_iter,
     mood,
-    opts
+    opts,
+    shift_len
     ):
     
     # width, problem_size, 2 (for TSP)
@@ -268,7 +269,8 @@ def LCP_TSP(
             decomposed_seeds, offset_seed = decomposition(seeds, 
                                             coordinate_dim,
                                             revision_len,
-                                            offset
+                                            offset,
+                                            shift_len
                                             )
             if torch.cuda.is_available():
                 original_subtour = torch.arange(0, revision_len, dtype=torch.long).cuda()
@@ -284,7 +286,7 @@ def LCP_TSP(
                                 offset,
                                 shift_len=opts.improve_shift
                                 )
-            print('decomposed seeds', decomposed_seeds.shape)
+            print('decomposed seeds shape for improvements', decomposed_seeds.shape)
                                 
             decomposed_seeds_revised = improve(reviser, decomposed_seeds, opts.n_steps)
 
@@ -377,13 +379,13 @@ def reconnect(
     # pi shape: (width, problem_size), dtype: torch.int64
     # cost shape: (width, )
     assert opts.problem =='tsp'
-
     seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
     # seed shape (width, problem_size, 2)
 
     # mincosts, argmincosts = cost.min(0)
     print('cost before revision:', cost.mean().item()) # not matter we use augmentation or not
-    
+    print()
+
     for revision_id in range(len(revisers)):
         start_time = time.time()
 
@@ -394,23 +396,31 @@ def reconnect(
             opts.revision_lens[revision_id],
             opts.revision_iters[revision_id],
             mood='construct',
-            opts = opts
+            opts=opts,
+            shift_len=opts.shift_lens[revision_id]
             )
         
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-        if opts.aug:
-            cost_revised, _ = cost_revised.reshape(4*opts.aug_shift, opts.eval_batch_size).min(0)
+
+        cost_revised, cost_revised_minidx = cost_revised.reshape(-1, opts.eval_batch_size).min(0) # width, bs
+        
+        # cur_width = cost_revised.shape[0]
+
+        # if revision_id < len(opts.top_k) and opts.top_k[revision_id] < cur_width:
+        #     k = opts.top_k[revision_id]
 
         duration = time.time() - start_time
 
-        print(f'after revision {revision_id}', cost_revised.mean().item(), f'duration {duration}')
-        
-
-
-        
+        print(f'after construction {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
+    print('cost_revised', cost_revised)
+    # print(seed.shape)
 
     if not opts.disable_improve:
-        
+        seed = seed.reshape(-1, opts.eval_batch_size, opts.problem_size, 2)
+    
+        # seed shape (width, bs, ps, 2)
+        seed = seed[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
+
         start_time = time.time()
         for revision_id in range(len(revisers2)):
             seed = LCP_TSP(
@@ -420,15 +430,15 @@ def reconnect(
                 opts.revision_lens2[revision_id],
                 opts.revision_iters2[revision_id],
                 mood='improve',
-                opts = opts
+                opts = opts,
+                shift_len=opts.shift_lens2[revision_id]
                 )
         
             duration = time.time() - start_time
             cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-            if opts.aug:
-                cost_revised, _ = cost_revised.reshape(4*opts.aug_shift, opts.eval_batch_size).min(0)
-            print(f'after revision {revision_id}', cost_revised.mean().item(), f'duration {duration}')
 
+            cost_revised, _ = cost_revised.reshape(-1, opts.eval_batch_size).min(0)
+            print(f'after improvement {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
     return seed, cost, cost_revised
 
 def sample_many():

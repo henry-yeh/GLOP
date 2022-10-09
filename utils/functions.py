@@ -365,12 +365,10 @@ def improve(reviser, decomposed_seeds, n_steps):
     return best_state
 
 def reconnect( 
-        get_cost_func, 
-        get_cost_func2,
+        get_cost_func,
         batch,
         opts, 
         revisers,
-        revisers2
     ):
     # cost, _ = get_cost_func(batch, pi_batch)
 
@@ -391,7 +389,7 @@ def reconnect(
 
         seed = LCP_TSP(
             seed, 
-            get_cost_func2,
+            get_cost_func,
             revisers[revision_id],
             opts.revision_lens[revision_id],
             opts.revision_iters[revision_id],

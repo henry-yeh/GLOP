@@ -8,7 +8,7 @@ import math
 from torch.utils.data import DataLoader
 from torch.nn import DataParallel
 
-from nets.attention_model import set_decode_type
+from nets.attention_local import set_decode_type
 from utils.log_utils import log_values
 from utils import move_to
 
@@ -32,15 +32,19 @@ def validate(model, dataset, opts):
     return avg_cost
 
 
-def rollout(model, dataset, opts):
+def rollout(model, dataset, opts, pick_worse=False): # TODO pick avg
     # Put in greedy evaluation mode!
     set_decode_type(model, "greedy")
     model.eval()
 
     def eval_model_bat(bat):
         with torch.no_grad():
-            cost, _ = model(move_to(bat, opts.device))
-        return cost.data.cpu()
+            cost, _, cost2, _ = model(move_to(bat, opts.device))
+            if pick_worse:
+                cost, _ = torch.stack((cost, cost2)).max(dim=0)
+            else:
+                cost, _ = torch.stack((cost, cost2)).min(dim=0)
+        return cost.data.cpu()  # TODO: design the baseline here
 
     return torch.cat([
         eval_model_bat(bat)
@@ -148,16 +152,16 @@ def train_batch(
 
     # Evaluate model, get costs and log probabilities
     # cost, log_likelihood, entropies = model(x)
-    cost, log_likelihood = model(x)
+    cost, log_likelihood, cost2, log_likelihood2 = model(x)
     
     # Evaluate baseline, get baseline loss if any (only for critic)
     bl_val, bl_loss = baseline.eval(x, cost) if bl_val is None else (bl_val, 0)
 
-
     # Calculate loss with Scaled Entropy Reward
     # reinforce_loss = ((cost - bl_val - opts.alp*entropies.detach()) * log_likelihood).mean()
     reinforce_loss = ((cost - bl_val) * log_likelihood).mean()
-    loss = reinforce_loss + bl_loss 
+    reinforce_loss2 = ((cost2 - bl_val) * log_likelihood2).mean()
+    loss = reinforce_loss + reinforce_loss2 + bl_loss
 
     # Perform backward pass and optimization step
     optimizer.zero_grad()

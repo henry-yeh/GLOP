@@ -19,7 +19,7 @@ def get_options(args=None):
     # parser.add_argument('--val_dataset', type=str, default=None, help='Dataset file to use for validation')
 
     # Model
-    parser.add_argument('--model', default='attention', help="Model, 'attention' (default) or 'pointer'")
+    # parser.add_argument('--model', default='attention', help="Model, 'attention' (default) or 'pointer'")
     parser.add_argument('--embedding_dim', type=int, default=128, help='Dimension of input embedding')
     parser.add_argument('--hidden_dim', type=int, default=128, help='Dimension of hidden layers in Enc/Dec')
     parser.add_argument('--context_dim', type=int, default=32, help='Dimension of context embedding for MTL')
@@ -33,7 +33,7 @@ def get_options(args=None):
     # Training
     # parser.add_argument('--alp', type=float, default=0, help="Set weight (alpha) for scaled entropy regularization")
     parser.add_argument('--lr_model', type=float, default=1e-4, help="Set the learning rate for the actor network")
-    parser.add_argument('--lr_critic', type=float, default=1e-4, help="Set the learning rate for the critic network")
+    # parser.add_argument('--lr_critic', type=float, default=1e-4, help="Set the learning rate for the critic network")
     parser.add_argument('--lr_decay', type=float, default=1.0, help='Learning rate decay per epoch')
     # parser.add_argument('--train_mode', type=str, default='unit', help="The distribution of the training samples: 'unit' or 'scale'.")
     parser.add_argument('--eval_only', action='store_true', help='Set this value to only evaluate model')
@@ -45,7 +45,7 @@ def get_options(args=None):
     parser.add_argument('--exp_beta', type=float, default=0.8,
                         help='Exponential moving average baseline decay (default 0.8)')
     parser.add_argument('--baseline', default='rollout',
-                        help="Baseline to use: 'rollout', 'critic' or 'exponential'.")
+                        help="Baseline to use: 'rollout', or 'exponential'.")
     parser.add_argument('--bl_alpha', type=float, default=0.05,
                         help='Significance in the t-test for updating rollout baseline')
     parser.add_argument('--bl_warmup_epochs', type=int, default=None,
@@ -58,7 +58,7 @@ def get_options(args=None):
     parser.add_argument('--shrink_size', type=int, default=None,
                         help='Shrink the batch size if at least this many instances in the batch are finished'
                              ' to save memory (default None means no shrinking)')
-    parser.add_argument('--data_distribution', type=str, default='scale',
+    parser.add_argument('--data_distribution', type=str, default='unit',
                         help="The distribution of the training samples: 'unit' or 'scale'.")
 
     # Misc

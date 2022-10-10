@@ -9,17 +9,13 @@ import torch
 import torch.optim as optim
 from tensorboard_logger import Logger as TbLogger
 
-from nets.critic_network import CriticNetwork
 from options import get_options
 from train import train_epoch, validate, get_inner_model
-from reinforce_baselines import NoBaseline, ExponentialBaseline, CriticBaseline, RolloutBaseline, WarmupBaseline
+from reinforce_baselines import NoBaseline, RolloutBaseline, WarmupBaseline
 
 
 from nets.attention_local import AttentionModel
 
-
-
-from nets.pointer_network import PointerNetwork, CriticNetworkLSTM
 from utils import torch_load_cpu, load_problem
 
 
@@ -57,12 +53,7 @@ def run(opts):
         load_data = torch_load_cpu(load_path)
 
     # Initialize model
-    model_class = {
-        'attention': AttentionModel,
-        'pointer': PointerNetwork,
-    }.get(opts.model, None)
-    assert model_class is not None, "Unknown model: {}".format(model_class)
-    model = model_class(
+    model = AttentionModel(
         opts.embedding_dim,
         opts.hidden_dim,
         problem,
@@ -72,8 +63,7 @@ def run(opts):
         normalization=opts.normalization,
         tanh_clipping=opts.tanh_clipping,
         checkpoint_encoder=opts.checkpoint_encoder,
-        shrink_size=opts.shrink_size,
-        context_dim=opts.context_dim  # added for MRL
+        shrink_size=opts.shrink_size
     ).to(opts.device)
 
     if opts.use_cuda and torch.cuda.device_count() > 1:
@@ -84,31 +74,9 @@ def run(opts):
     model_.load_state_dict({**model_.state_dict(), **load_data.get('model', {})})
 
     # Initialize baseline
-    if opts.baseline == 'exponential':
-        baseline = ExponentialBaseline(opts.exp_beta)
-    elif opts.baseline == 'critic' or opts.baseline == 'critic_lstm':
-        assert problem.NAME == 'tsp', "Critic only supported for TSP"
-        baseline = CriticBaseline(
-            (
-                CriticNetworkLSTM(
-                    2,
-                    opts.embedding_dim,
-                    opts.hidden_dim,
-                    opts.n_encode_layers,
-                    opts.tanh_clipping
-                )
-                if opts.baseline == 'critic_lstm'
-                else
-                CriticNetwork(
-                    2,
-                    opts.embedding_dim,
-                    opts.hidden_dim,
-                    opts.n_encode_layers,
-                    opts.normalization
-                )
-            ).to(opts.device)
-        )
-    elif opts.baseline == 'rollout':
+    # if opts.baseline == 'exponential':
+    #     baseline = ExponentialBaseline(opts.exp_beta)
+    if opts.baseline == 'rollout':
         baseline = RolloutBaseline(model, problem, opts)
         print('load rollout baseline ......')
     else:

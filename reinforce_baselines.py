@@ -110,36 +110,6 @@ class ExponentialBaseline(Baseline):
         self.v = state_dict['v']
 
 
-class CriticBaseline(Baseline):
-
-    def __init__(self, critic):
-        super(Baseline, self).__init__()
-
-        self.critic = critic
-
-    def eval(self, x, c):
-        v = self.critic(x)
-        # Detach v since actor should not backprop through baseline, only for loss
-        return v.detach(), F.mse_loss(v, c.detach())
-
-    def get_learnable_parameters(self):
-        return list(self.critic.parameters())
-
-    def epoch_callback(self, model, epoch):
-        pass
-
-    def state_dict(self):
-        return {
-            'critic': self.critic.state_dict()
-        }
-
-    def load_state_dict(self, state_dict):
-        critic_state_dict = state_dict.get('critic', {})
-        if not isinstance(critic_state_dict, dict):  # backwards compatibility
-            critic_state_dict = critic_state_dict.state_dict()
-        self.critic.load_state_dict({**self.critic.state_dict(), **critic_state_dict})
-
-
 class RolloutBaseline(Baseline):
 
     def __init__(self, model, problem, opts, epoch=0):
@@ -177,16 +147,16 @@ class RolloutBaseline(Baseline):
         print("Evaluating baseline on dataset...")
         # Need to convert baseline to 2D to prevent converting to double, see
         # https://discuss.pytorch.org/t/dataloader-gives-double-instead-of-float/717/3
-        return BaselineDataset(dataset, rollout(self.model, dataset, self.opts).view(-1, 1))
+        return BaselineDataset(dataset, rollout(self.model, dataset, self.opts, pick_worse=True).view(-1, 1))
 
     def unwrap_batch(self, batch):
         return batch['data'], batch['baseline'].view(-1)  # Flatten result to undo wrapping as 2D
 
     def eval(self, x, c):
+        raise NotImplementedError
         # Use volatile mode for efficient inference (single batch so we do not use rollout function)
         with torch.no_grad():
             v, _ = self.model(x)
-
         # There is no loss
         return v, 0
 

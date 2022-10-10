@@ -9,57 +9,17 @@ from multiprocessing.dummy import Pool as ThreadPool
 from multiprocessing import Pool
 import torch.nn.functional as F
 import math
-from improvement.TSPEnvironment import TSPInstanceEnv, VecEnv
 import time
 
 def load_problem(name):
-    from problems import TSP, CVRP, SDVRP, OP, PCTSPDet, PCTSPStoch,LOCAL
+    from problems import TSP, LOCAL
     problem = {
         'local': LOCAL,
         'tsp': TSP,
-        'cvrp': CVRP,
-        'sdvrp': SDVRP,
-        'op': OP,
-        'pctsp_det': PCTSPDet,
-        'pctsp_stoch': PCTSPStoch,
     }.get(name, None)
     assert problem is not None, "Currently unsupported problem: {}!".format(name)
     return problem
 
-def solve_gurobi(directory, name, loc, disable_cache=False, timeout=None, gap=None):
-    # Lazy import so we do not need to have gurobi installed to run this script
-    from problems.tsp.tsp_gurobi import solve_euclidian_tsp as solve_euclidian_tsp_gurobi
-
-    try:
-        problem_filename = os.path.join(directory, "{}.gurobi{}{}.pkl".format(
-            name, "" if timeout is None else "t{}".format(timeout), "" if gap is None else "gap{}".format(gap)))
-
-        if os.path.isfile(problem_filename) and not disable_cache:
-            (cost, tour, duration) = load_dataset(problem_filename)
-        else:
-            # 0 = start, 1 = end so add depot twice
-            start = time.time()
-            
-            loc.append(loc[int(len(loc)-1)])
-            
-            cost, tour = solve_euclidian_tsp_gurobi(loc, threads=1, timeout=timeout, gap=gap)
-            duration = time.time() - start  # Measure clock time
-            
-#             save_dataset((cost, tour, duration), problem_filename)
-
-        # First and last node are depot(s), so first node is 2 but should be 1 (as depot is 0) so subtract 1
-        total_cost = calc_tsp_length(loc, tour)
-        print(total_cost)
-        
-#         assert abs(total_cost - cost) <= 1e-5, "Cost is incorrect"
-        return total_cost, tour, duration
-
-    except Exception as e:
-        # For some stupid reason, sometimes OR tools cannot find a feasible solution?
-        # By letting it fail we do not get total results, but we dcan retry by the caching mechanism
-        print("Exception occured")
-        print(e)
-        return None
 def torch_load_cpu(load_path):
     return torch.load(load_path, map_location=lambda storage, loc: storage)  # Load on CPU
 
@@ -113,7 +73,6 @@ def load_args(filename):
 
 
 def load_model(path, epoch=None, is_local=True):
-    from nets.attention_model import AttentionModel
 
     if os.path.isfile(path):
         model_filename = path
@@ -253,7 +212,6 @@ def LCP_TSP(
     reviser,
     revision_len,
     revision_iter,
-    mood,
     opts,
     shift_len
     ):
@@ -265,30 +223,20 @@ def LCP_TSP(
     offset = num_nodes % revision_len
 
     for _ in range(revision_iter):
-        if mood == 'construct':
-            decomposed_seeds, offset_seed = decomposition(seeds, 
-                                            coordinate_dim,
-                                            revision_len,
-                                            offset,
-                                            shift_len
-                                            )
-            if torch.cuda.is_available():
-                original_subtour = torch.arange(0, revision_len, dtype=torch.long).cuda()
-            else:
-                original_subtour = torch.arange(0, revision_len, dtype=torch.long)
+
+        decomposed_seeds, offset_seed = decomposition(seeds, 
+                                        coordinate_dim,
+                                        revision_len,
+                                        offset,
+                                        shift_len
+                                        )
+        if torch.cuda.is_available():
+            original_subtour = torch.arange(0, revision_len, dtype=torch.long).cuda()
+        else:
+            original_subtour = torch.arange(0, revision_len, dtype=torch.long)
+    
+        decomposed_seeds_revised = revision(cost_func, reviser, decomposed_seeds, original_subtour)
         
-            decomposed_seeds_revised = revision(cost_func, reviser, decomposed_seeds, original_subtour)
-        
-        elif mood == 'improve':
-            decomposed_seeds, offset_seed = decomposition(seeds, 
-                                coordinate_dim,
-                                revision_len,
-                                offset,
-                                shift_len=opts.improve_shift
-                                )
-            print('decomposed seeds shape for improvements', decomposed_seeds.shape)
-                                
-            decomposed_seeds_revised = improve(reviser, decomposed_seeds, opts.n_steps)
 
         seeds = decomposed_seeds_revised.reshape(batch_size, -1, coordinate_dim)
 
@@ -297,91 +245,13 @@ def LCP_TSP(
     return seeds
 
 
-def improve(reviser, decomposed_seeds, n_steps):
-    # coordinate transformation
-    max_x, indices_max_x = decomposed_seeds[:,:,0].max(dim=1)
-    max_y, indices_max_y = decomposed_seeds[:,:,1].max(dim=1)
-    min_x, indices_min_x = decomposed_seeds[:,:,0].min(dim=1)
-    min_y, indices_min_y = decomposed_seeds[:,:,1].min(dim=1)
-    # shapes: (batch_size, ); (batch_size, )
-    
-    diff_x = max_x - min_x
-    diff_y = max_y - min_y
-    xy_exchanged = diff_y > diff_x
-
-    # shift to zero
-    decomposed_seeds[:, :, 0] -= (min_x).unsqueeze(-1)
-    decomposed_seeds[:, :, 1] -= (min_y).unsqueeze(-1)
-
-    # exchange coordinates for those diff_y > diff_x
-    decomposed_seeds[xy_exchanged, :, 0], decomposed_seeds[xy_exchanged, :, 1] =  decomposed_seeds[xy_exchanged, :, 1], decomposed_seeds[xy_exchanged, :, 0]
-    
-    # scale to (0, 1)
-    scale_degree = torch.max(diff_x, diff_y)
-    scale_degree = scale_degree.view(decomposed_seeds.shape[0], 1, 1)
-    decomposed_seeds /= scale_degree
-
-    # transformation done
-
-    b_sample = decomposed_seeds.cpu().clone().detach().numpy()
-    sum_reward = 0
-    bs, ps, _ = b_sample.shape
-    env = VecEnv(TSPInstanceEnv,
-                 b_sample.shape[0],
-                 ps)
-    state, initial_distance, best_state = env.reset(b_sample)
-    t = 0
-    hidden = None
-    while t < n_steps:
-        state = torch.from_numpy(state).float()
-        best_state = torch.from_numpy(best_state).float()
-        if torch.cuda.is_available():
-            state = state.cuda()
-            best_state = best_state.cuda()
-        with torch.no_grad():
-            _, action, _, _, _, hidden = reviser(state, best_state, hidden)
-        action = action.cpu().numpy()
-        state, reward, _, best_distance, distance, best_state = env.step(action)
-        # state shape: (bs, ps, 2)
-        sum_reward += reward
-        t += 1
-        # print(np.mean(best_distance, axis=0))
-
-    avg_best_distances = np.mean(best_distance, axis=0)
-    avg_initial_distances = np.mean(initial_distance, axis=0)
-    print('avg. initial Cost: {}; avg. best Cost: {}'.format(
-    avg_initial_distances/10000, avg_best_distances/10000))
-
-    best_state = torch.from_numpy(best_state).float()
-    if torch.cuda.is_available():
-        best_state = best_state.cuda()
-    
-    # transform the coordinates back
-    best_state[xy_exchanged, :, 0], best_state[xy_exchanged, :, 1] =  best_state[xy_exchanged, :, 1], best_state[xy_exchanged, :, 0]
-    best_state *= scale_degree
-    best_state[:, :, 0] += (min_x).unsqueeze(-1)
-    best_state[:, :, 1] += (min_y).unsqueeze(-1)
-
-    return best_state
-
 def reconnect( 
         get_cost_func,
         batch,
         opts, 
         revisers,
     ):
-    # cost, _ = get_cost_func(batch, pi_batch)
 
-    # instance shape: (width, problem_size, 2)
-    # pi shape: (width, problem_size), dtype: torch.int64
-    # cost shape: (width, )
-    # assert opts.problem =='tsp'
-    # seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
-    # seed shape (width, problem_size, 2)
-
-    # mincosts, argmincosts = cost.min(0)
-    # print('cost before revision:', cost.mean().item()) # not matter we use augmentation or not
-    # print()
     seed = batch
 
     for revision_id in range(len(revisers)):
@@ -393,7 +263,6 @@ def reconnect(
             revisers[revision_id],
             opts.revision_lens[revision_id],
             opts.revision_iters[revision_id],
-            mood='construct',
             opts=opts,
             shift_len=opts.shift_lens[revision_id]
             )

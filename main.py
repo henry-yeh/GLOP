@@ -107,11 +107,14 @@ def _eval_dataset(dataset, opts, device, revisers):
                     avg_cost += cost
                     pi_batch[instance_id] = torch.tensor(pi)
                 avg_cost /= opts.eval_batch_size
+
             else:
                 pi_batch = torch.stack([torch.randperm(opts.problem_size) for _ in range(opts.width*opts.eval_batch_size)])
                 batch = batch.repeat(opts.width, 1, 1)
+                
             seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
             seed = seed.to(device)
+
             if not opts.FI:
                 avg_cost = ((seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)).mean()
 

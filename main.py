@@ -48,19 +48,14 @@ def eval_dataset(dataset_path, opts):
     revision_lens = opts.revision_lens
 
     for reviser_size in revision_lens:
-        reviser_path = f'pretrained_LCP/constructions/Reviser-6-scale/reviser_{reviser_size}/epoch-199.pt'
-        if reviser_size in [50, 100]:
-            reviser_path = f'pretrained_LCP/constructions/Reviser-6-scale/reviser_{reviser_size}/epoch-400.pt'
-        if reviser_size in [100]:
-            reviser_path = f'pretrained_LCP/constructions/Reviser-3-unit/reviser_{reviser_size}/epoch-99.pt'
+        reviser_path = f'pretrained_LCP/reviser_{reviser_size}/mean-sum/epoch-100.pt'
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
         
     for reviser in revisers:
         reviser.to(device)
         reviser.eval()
-        # reviser.set_decode_type("greedy")
-        reviser.set_decode_type(opts.decode_strategy)
+        reviser.set_decode_type(opts.decode_strategy) # TODO sampling may be better
 
     dataset = reviser.problem.make_dataset(filename=dataset_path, num_samples=opts.val_size, offset=0)
     results = _eval_dataset(dataset, opts, device, revisers)
@@ -161,10 +156,10 @@ if __name__ == "__main__":
                         help='Number of instances used for reporting validation performance')
     parser.add_argument('--eval_batch_size', type=int, default=16,
                         help="Batch size to use during (baseline) evaluation")
-    parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[10,25,20], type=int)
-    parser.add_argument('--shift_lens', nargs='+', default=[10,2,1], type=int)
-    parser.add_argument('--decode_strategy', type=str, default='sampling', help='decode strategy of the model')
+    parser.add_argument('--revision_lens', nargs='+', default=[20] ,type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[20], type=int)
+    parser.add_argument('--shift_lens', nargs='+', default=[1], type=int)
+    parser.add_argument('--decode_strategy', type=str, default='greedy', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')

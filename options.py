@@ -23,7 +23,7 @@ def get_options(args=None):
     parser.add_argument('--embedding_dim', type=int, default=128, help='Dimension of input embedding')
     parser.add_argument('--hidden_dim', type=int, default=128, help='Dimension of hidden layers in Enc/Dec')
     parser.add_argument('--context_dim', type=int, default=32, help='Dimension of context embedding for MTL')
-    parser.add_argument('--n_encode_layers', type=int, default=3,
+    parser.add_argument('--n_encode_layers', type=int, default=6,
                         help='Number of layers in the encoder/critic network')
     parser.add_argument('--tanh_clipping', type=float, default=10.,
                         help='Clip the parameters to within +- this value using tanh. '

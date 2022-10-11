@@ -191,15 +191,13 @@ def revision(revision_cost_func, reviser, decomposed_seeds, original_subtour):
 
     # tour length of segment TSPs
     init_cost = revision_cost_func(decomposed_seeds, original_subtour)
-    cost_revised, sub_tour = reviser(decomposed_seeds, return_pi=True)
+    cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(decomposed_seeds, return_pi=True)
+    cost_revised, better_tour_idx = torch.stack((cost_revised1, cost_revised2)).min(dim=0)
+    sub_tour = torch.stack((sub_tour1, sub_tour2))[better_tour_idx, torch.arange(sub_tour1.shape[0])]
     reduced_cost = init_cost - cost_revised
 
-    # revision_len = decomposed_seeds.shape[1]
     # reduced_cost_mean = reduced_cost[reduced_cost>0].mean()
     # print(f'revisor{revision_len}; reduced_cost{reduced_cost_mean}')
-
-    # preserve previous tour if reduced cost is negative
-    # print(original_subtour)
 
     sub_tour[reduced_cost < 0] = original_subtour
     decomposed_seeds = decomposed_seeds.gather(1, sub_tour.unsqueeze(-1).expand_as(decomposed_seeds))

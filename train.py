@@ -32,7 +32,7 @@ def validate(model, dataset, opts):
     return avg_cost
 
 
-def rollout(model, dataset, opts, pick_worse=False): # TODO pick avg
+def rollout(model, dataset, opts, pick_worse=False):
     # Put in greedy evaluation mode!
     set_decode_type(model, "greedy")
     model.eval()
@@ -40,12 +40,11 @@ def rollout(model, dataset, opts, pick_worse=False): # TODO pick avg
     def eval_model_bat(bat):
         with torch.no_grad():
             cost, _, cost2, _ = model(move_to(bat, opts.device))
-            if pick_worse: # TODO design the baseline here !!!
-                # cost, _ = torch.stack((cost, cost2)).max(dim=0)
-                cost = torch.stack((cost, cost2)).mean(dim=0)
+            if pick_worse: 
+                cost, _ = torch.stack((cost, cost2)).max(dim=0)
             else:
                 cost, _ = torch.stack((cost, cost2)).min(dim=0)
-        return cost.data.cpu()  # TODO: design the baseline here
+        return cost.data.cpu() 
 
     return torch.cat([
         eval_model_bat(bat)

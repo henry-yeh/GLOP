@@ -111,7 +111,8 @@ def run(opts):
 
     # Initialize learning rate scheduler, decay by lr_decay once per epoch!
     lr_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: opts.lr_decay ** epoch)
-
+    lr_scheduler2 = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100,180], gamma=0.1)
+    lr_schedulers = [lr_scheduler, lr_scheduler2]
     # Start the actual training loop
 
     # make validation dataset
@@ -150,7 +151,7 @@ def run(opts):
                 model,
                 optimizer,
                 baseline,
-                lr_scheduler,
+                lr_schedulers,
                 epoch,
                 val_dataset,
                 problem,

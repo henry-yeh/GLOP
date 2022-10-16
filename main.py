@@ -48,7 +48,11 @@ def eval_dataset(dataset_path, opts):
     revision_lens = opts.revision_lens
 
     for reviser_size in revision_lens:
-        reviser_path = f'pretrained_LCP/reviser_{reviser_size}/mean-sum/epoch-100.pt'
+        if reviser_size in [100, 50]:
+            reviser_path = f'pretrained_LCP/Reviser-scale/reviser_{reviser_size}/epoch-200.pt'
+        elif reviser_size == 20:
+            reviser_path = f'pretrained_LCP/Reviser-scale/reviser_{reviser_size}/epoch-199.pt'
+        
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
         
@@ -113,17 +117,16 @@ def _eval_dataset(dataset, opts, device, revisers):
             if not opts.FI:
                 avg_cost = ((seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)).mean()
 
-            ##############################################################
-            # if opts.aug:
+            if opts.aug:
                 
-            #     if opts.aug_shift > 1:
-            #         seed = torch.cat([torch.roll(seed, i, 1) for i in range(0, opts.aug_shift)], dim=0)
-            #     seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
-            #     seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
-            #     seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
-            #     seed = torch.cat((seed, seed2, seed3, seed4), dim=0)
+                if opts.aug_shift > 1:
+                    seed = torch.cat([torch.roll(seed, i, 1) for i in range(0, opts.aug_shift)], dim=0)
+                seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
+                seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
+                seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
+                seed = torch.cat((seed, seed2, seed3, seed4), dim=0)
                 
-            #     print('\n seed shape after augmentation:', seed.shape)
+                print('\n seed shape after augmentation:', seed.shape)
 
             # needed shape: (width, graph_size, 2) / (width, graph_size)
             
@@ -152,21 +155,26 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--problem_size", type=int, default=200)
     parser.add_argument("--problem_type", type=str, default='tsp')
-    parser.add_argument('--val_size', type=int, default=16,
+    parser.add_argument('--val_size', type=int, default=128,
                         help='Number of instances used for reporting validation performance')
-    parser.add_argument('--eval_batch_size', type=int, default=16,
+    parser.add_argument('--eval_batch_size', type=int, default=128,
                         help="Batch size to use during (baseline) evaluation")
-    parser.add_argument('--revision_lens', nargs='+', default=[20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[20], type=int)
-    parser.add_argument('--shift_lens', nargs='+', default=[1], type=int)
+    parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[100,25,20,], type=int)
+    parser.add_argument('--shift_lens', nargs='+', default=[5,2,1], type=int)
     parser.add_argument('--decode_strategy', type=str, default='greedy', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
     parser.add_argument('--FI', action='store_true')
+    parser.add_argument('--aug', action='store_true')
+    parser.add_argument('--aug_shift', type=int, default=1, help='')
     
     opts = parser.parse_args()
-
-
+    if not opts.FI: # random initialization
+        assert not opts.aug, "Cannot implement instance augmentation when initializing randomly! "
+    else:   # farthest insertion
+        assert  opts.width == 1, "Cannot implement width when initializing with farthest insertion!"
+    
     dataset_path = f'data/tsp/tsp{opts.problem_size}_test.pkl'
     eval_dataset(dataset_path, opts)

@@ -32,7 +32,7 @@ def validate(model, dataset, opts):
     return avg_cost
 
 
-def rollout(model, dataset, opts, pick_worse=False):
+def rollout(model, dataset, opts, cal_mean=False):
     # Put in greedy evaluation mode!
     set_decode_type(model, "greedy")
     model.eval()
@@ -40,8 +40,9 @@ def rollout(model, dataset, opts, pick_worse=False):
     def eval_model_bat(bat):
         with torch.no_grad():
             cost, _, cost2, _ = model(move_to(bat, opts.device))
-            if pick_worse: 
-                cost, _ = torch.stack((cost, cost2)).max(dim=0)
+            if cal_mean: 
+                # cost, _ = torch.stack((cost, cost2)).max(dim=0)
+                cost = torch.stack((cost, cost2)).mean(dim=0)
             else:
                 cost, _ = torch.stack((cost, cost2)).min(dim=0)
         return cost.data.cpu() 
@@ -81,10 +82,10 @@ def train_epoch(model, optimizer, baseline, lr_scheduler, epoch, val_dataset, pr
     if not opts.no_tensorboard:
         tb_logger.log_value('learnrate_pg0', optimizer.param_groups[0]['lr'], step)
 
-    # Generate new training data for each epoch
-    if train_dataset:
+    # Use the input dataset or generate new training data for each epoch
+    if train_dataset is not None:
         training_dataset = baseline.wrap_dataset(train_dataset)
-        training_dataloader = DataLoader(training_dataset, batch_size=opts.batch_size, num_workers=1, shuffle=True)
+        training_dataloader = DataLoader(training_dataset, batch_size=opts.batch_size, num_workers=0, shuffle=True)
     else:
         training_dataset = baseline.wrap_dataset(problem.make_dataset(
             size=opts.graph_size, num_samples=opts.epoch_size, distribution=opts.data_distribution))

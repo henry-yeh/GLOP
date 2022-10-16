@@ -18,7 +18,9 @@ from nets.attention_local import AttentionModel
 
 from utils import torch_load_cpu, load_problem
 
-
+# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+# import multiprocessing as mp
+# mp.set_start_method('spawn')
 
 def run(opts):
 
@@ -111,7 +113,7 @@ def run(opts):
 
     # Initialize learning rate scheduler, decay by lr_decay once per epoch!
     lr_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: opts.lr_decay ** epoch)
-    lr_scheduler2 = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100,180], gamma=0.1)
+    lr_scheduler2 = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[], gamma=1)
     lr_schedulers = [lr_scheduler, lr_scheduler2]
     # Start the actual training loop
 
@@ -140,8 +142,9 @@ def run(opts):
         start_time = time()
         if opts.FI_train:
             filename = opts.FI_path
-            train_dataset = problem.make_dataset(
-                filename = filename)
+            # train_dataset = problem.make_dataset( # TODO change here, make it a torch tensor
+            #     filename = filename)
+            train_dataset = torch.load(filename, map_location=opts.device)
             print('----load training samples from {}----'.format(filename))
             print(len(train_dataset))
         else:

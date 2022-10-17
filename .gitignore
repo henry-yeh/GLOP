@@ -11,7 +11,7 @@ __pycache__/
 *.bak
 temp.py
 temp.ipynb
-pretrained_LCP/
+pretrained/
 desktop.ini
 test.ipynb
 test.py

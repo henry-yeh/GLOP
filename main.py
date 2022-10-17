@@ -14,28 +14,28 @@ import pprint as pp
 mp = torch.multiprocessing.get_context('spawn')
 
 
-def get_best(sequences, cost, ids=None, batch_size=None):
-    """
-    Ids contains [0, 0, 0, 1, 1, 2, ..., n, n, n] if 3 solutions found for 0th instance, 2 for 1st, etc
-    :param sequences:
-    :param lengths:
-    :param ids:
-    :return: list with n sequences and list with n lengths of solutions
-    """
-    if ids is None:
-        idx = cost.argmin()
-        return sequences[idx:idx+1, ...], cost[idx:idx+1, ...]
+# def get_best(sequences, cost, ids=None, batch_size=None):
+#     """
+#     Ids contains [0, 0, 0, 1, 1, 2, ..., n, n, n] if 3 solutions found for 0th instance, 2 for 1st, etc
+#     :param sequences:
+#     :param lengths:
+#     :param ids:
+#     :return: list with n sequences and list with n lengths of solutions
+#     """
+#     if ids is None:
+#         idx = cost.argmin()
+#         return sequences[idx:idx+1, ...], cost[idx:idx+1, ...]
 
-    splits = np.hstack([0, np.where(ids[:-1] != ids[1:])[0] + 1])
-    mincosts = np.minimum.reduceat(cost, splits)
+#     splits = np.hstack([0, np.where(ids[:-1] != ids[1:])[0] + 1])
+#     mincosts = np.minimum.reduceat(cost, splits)
 
-    group_lengths = np.diff(np.hstack([splits, len(ids)]))
-    all_argmin = np.flatnonzero(np.repeat(mincosts, group_lengths) == cost)
-    result = np.full(len(group_lengths) if batch_size is None else batch_size, -1, dtype=int)
+#     group_lengths = np.diff(np.hstack([splits, len(ids)]))
+#     all_argmin = np.flatnonzero(np.repeat(mincosts, group_lengths) == cost)
+#     result = np.full(len(group_lengths) if batch_size is None else batch_size, -1, dtype=int)
 
-    result[ids[all_argmin[::-1]]] = all_argmin[::-1]
+#     result[ids[all_argmin[::-1]]] = all_argmin[::-1]
 
-    return [sequences[i] if i >= 0 else None for i in result], [cost[i] if i >= 0 else math.inf for i in result]
+#     return [sequences[i] if i >= 0 else None for i in result], [cost[i] if i >= 0 else math.inf for i in result]
 
 
 def eval_dataset(dataset_path, opts):
@@ -48,10 +48,12 @@ def eval_dataset(dataset_path, opts):
     revision_lens = opts.revision_lens
 
     for reviser_size in revision_lens:
-        if reviser_size in [100, 50]:
-            reviser_path = f'pretrained_LCP/Reviser-scale/reviser_{reviser_size}/epoch-200.pt'
+        if reviser_size == 100:
+            reviser_path = f'pretrained/Reviser-ft/reviser_{reviser_size}/epoch-100.pt'
+        elif reviser_size == 50:
+            reviser_path = f'pretrained/Reviser-scale/reviser_{reviser_size}/epoch-200.pt'
         elif reviser_size == 20:
-            reviser_path = f'pretrained_LCP/Reviser-scale/reviser_{reviser_size}/epoch-199.pt'
+            reviser_path = f'pretrained/Reviser-scale/reviser_{reviser_size}/epoch-199.pt'
         
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
@@ -160,8 +162,8 @@ if __name__ == "__main__":
     parser.add_argument('--eval_batch_size', type=int, default=128,
                         help="Batch size to use during (baseline) evaluation")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[100,25,20,], type=int)
-    parser.add_argument('--shift_lens', nargs='+', default=[5,2,1], type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[10,0,0,], type=int)
+    parser.add_argument('--shift_lens', nargs='+', default=[10,2,1], type=int)
     parser.add_argument('--decode_strategy', type=str, default='greedy', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')

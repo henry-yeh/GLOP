@@ -85,7 +85,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", default='data/FI_train_tsp', help="Create datasets in data_dir")
     parser.add_argument("--name", default='FI', type=str, help="Name to identify dataset")
-    parser.add_argument("--dataset_size", type=int, default=200000, help="Size of the dataset")
+    parser.add_argument("--dataset_size", type=int, default=1000000, help="Size of the dataset")
     parser.add_argument('--graph_size', type=int, default=500,
                         help="Sizes of problem instances")
     parser.add_argument('--revision_len', type=int, default=100)
@@ -99,8 +99,8 @@ if __name__ == "__main__":
     
     torch.manual_seed(opts.seed)
 
-    filename = os.path.join(datadir, "{}_{}_seed{}{}.pt".format(
+    filename = os.path.join(datadir, "{}_{}{}_seed{}.pt".format(
     graph_size, opts.name, opts.revision_len, opts.seed))
     dataset = generate_tsp_data(opts.dataset_size, opts)
 
-    torch.save(dataset, filename)
+    torch.save(dataset.cpu(), filename)

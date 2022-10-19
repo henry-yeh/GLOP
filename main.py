@@ -49,7 +49,7 @@ def eval_dataset(dataset_path, opts):
 
     for reviser_size in revision_lens:
         if reviser_size == 100:
-            reviser_path = f'pretrained/Reviser-ft/reviser_{reviser_size}/epoch-100.pt'
+            reviser_path = f'pretrained/Reviser-ft/reviser_{reviser_size}/epoch-200.pt'
         elif reviser_size == 50:
             reviser_path = f'pretrained/Reviser-scale/reviser_{reviser_size}/epoch-200.pt'
         elif reviser_size == 20:

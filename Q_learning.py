@@ -153,10 +153,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--batch_size', type=int, default=2, help="Batch size to use training")
-    parser.add_argument('--revision_lens', nargs='+', default=[100,50,20,10] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[10,25,20,10], type=int)
+    parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
+    parser.add_argument('--revision_iters', nargs='+', default=[20,25,10], type=int)
     parser.add_argument('--decode_strategy', type=str, default='greedy', help='decode strategy of the model')
-    parser.add_argument('--width', type=int, default=4, help='Width of tours for an instance')
+    parser.add_argument('--width', type=int, default=1, help='Width of tours for an instance')
     parser.add_argument('--epsilon', type=float, default=0.1, help='For epsilon-greedy')
     parser.add_argument('--alpha', type=float, default=0.3, help='Learning rate of rollers')
     parser.add_argument('--gamma', type=float, default=0.9, help='Reward decay')
@@ -166,11 +166,8 @@ if __name__ == "__main__":
     revisers = []
     for reviser_size in opts.revision_lens:
         if reviser_size in [100, 50]:
-            reviser_path = f'pretrained_LCP/Reviser-scale/reviser_{reviser_size}/epoch-200.pt'
-        elif reviser_size == 20:
-            reviser_path = f'pretrained_LCP/Reviser-scale/reviser_{reviser_size}/epoch-199.pt'
-        elif reviser_size == 10:
-            reviser_path = f'pretrained_LCP/Reviser-scale/reviser_{reviser_size}/epoch-99.pt'
+            reviser_path = f'pretrained_LCP/Reviser-ft/reviser_{reviser_size}/epoch-299.pt'
+        
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
     

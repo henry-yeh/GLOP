@@ -48,12 +48,7 @@ def eval_dataset(dataset_path, opts):
     revision_lens = opts.revision_lens
 
     for reviser_size in revision_lens:
-        if reviser_size == 100:
-            reviser_path = f'pretrained/Reviser-ft/reviser_{reviser_size}/epoch-200.pt'
-        elif reviser_size == 50:
-            reviser_path = f'pretrained/Reviser-scale/reviser_{reviser_size}/epoch-200.pt'
-        elif reviser_size == 20:
-            reviser_path = f'pretrained/Reviser-scale/reviser_{reviser_size}/epoch-199.pt'
+        reviser_path = f'pretrained/Reviser-ft/reviser_{reviser_size}/epoch-299.pt'
         
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)

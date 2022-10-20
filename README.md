@@ -1,62 +1,31 @@
-# Learning Collaborative Policies to Solve NP-hard Routing Problems
 
-Learhing collaborative policies (LCP) is new problem-solving strategy to tackle NP-hard routing problem such as travelling salesman problem. LCP uses existing competitive model such as Attention Model (AM). We have two main policies: seeder and reviser. Seeder searches full trajectories trained with proposed scaled entropy regularization. Reviser improves seeder's initial feasible candidate solutions in restricted solution space (i.e., partial solution). 
-
-
-
-## Paper
-This is official PyTorch code for our paper [Learning Collaborative Policies to Solve NP-hard Routing Problems](https://arxiv.org/abs/2110.13987) which has been accepted at [NeurIPS 2021](https://papers.nips.cc/paper/2021), cite our paper as follows:
-
-```
-@inproceedings{kim2021learning,
-  title={Learning Collaborative Policies to Solve NP-hard Routing Problems},
-  author={Kim, Minsu and Park, Jinkyoo and Kim, Joungho},
-  booktitle={Advances in Neural Information Processing Systems},
-  year={2021}
-}
-```
-
-## Thanks to
-
-This code is originally implemented based on  [Attention Model](https://github.com/wouterkool/attention-learn-to-route) , which is source code of the paper   [Attention, Learn to Solve Routing Problems!](https://openreview.net/forum?id=ByxBFsRqYm) which has been accepted at [ICLR 2019](https://iclr.cc/Conferences/2019), cite as follows:
-
-```
-@inproceedings{
-    kool2018attention,
-    title={Attention, Learn to Solve Routing Problems!},
-    author={Wouter Kool and Herke van Hoof and Max Welling},
-    booktitle={International Conference on Learning Representations},
-    year={2019},
-    url={https://openreview.net/forum?id=ByxBFsRqYm},
-}
-```
-
-Our work designed collaborative polices (seeder and reviser), each policy is parameterized with Attention Model (AM), most of code configuration is same, except:
-
-* New python file containing slightly modified neural architecture for reviser named "nets/attention_local.py".
-* Modified "net/attention_model.py" to measure entropy of segment policy (see paper for detail).
-* Modified "train.py" to add scaled entropy regularization term. 
-* Modified 'sample_many' function in "utils/functions.py" to modify solution design process with collaborative policies. 
-* Modified 'eval.py' to modify solution design process.
-
-
-
-## Important Remark
-
-* Our work is scheme using two collaborative polices to tackle problem complexity. Therefore, the AM is just example architecture to verify our idea. Please use our idea to state-of-the-art neural combinatorial optimization models to get higher performances.
-
-* This code is focused on TSP. See AM implementation for other TSP-like problems. 
-
-* Our work can be adapted with TSP-like problems. Seeder should be trained with scaled entropy scheme. Reviser can be simply small sized seeder, or can be trained with attention local (only when the start node and the destination node is differ).
 
 ## How to Use
 
 ### Generating data
+Once you obtaine the revisers that have finished the 1st-stage curriculum learning, you can use them to generate training dataset for 2nd-stage curriculum learning.
 
-To generated random instances (which is benchmark dataset in every NCO papers) use:
+To generate training dataset for reviser100:
 ```bash
-python generate_data.py --problem tsp --name test --seed 1234
+python generate_data_FI.py
 ```
+
+To generate training dataset for reviser50:
+```bash
+python generate_data_RG.py --load_path pretrained/Reviser-ft/reviser_100/epoch-299.pt --data_path data/FI_train_tsp/500_FI100_seed1235.pt --tgt_size 50 --revision_lens 100 --batch_size 50
+```
+
+To generate training dataset for reviser20:
+```bash
+python generate_data_RG.py --load_path pretrained/Reviser-ft/reviser_50/epoch-299.pt --data_path data/RG_train_tsp/RG50.pt --tgt_size 20 --revision_lens 50 --batch_size 100 
+```
+
+To generate training dataset for reviser10:
+```bash
+python generate_data_RG.py --load_path pretrained/Reviser-ft/reviser_20/epoch-299.pt --data_path data/RG_train_tsp/RG20.pt --tgt_size 10 --revision_lens 20 --batch_size 100 
+```
+
+
 
 
 ### Evaluation with pretrained model

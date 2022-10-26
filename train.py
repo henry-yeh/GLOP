@@ -41,7 +41,6 @@ def rollout(model, dataset, opts, cal_mean=False):
         with torch.no_grad():
             cost, _, cost2, _ = model(move_to(bat, opts.device))
             if cal_mean: 
-                # cost, _ = torch.stack((cost, cost2)).max(dim=0)
                 cost = torch.stack((cost, cost2)).mean(dim=0)
             else:
                 cost, _ = torch.stack((cost, cost2)).min(dim=0)

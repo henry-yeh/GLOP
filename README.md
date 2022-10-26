@@ -28,100 +28,19 @@ python generate_data_RG.py --load_path pretrained/Reviser-ft/reviser_20/epoch-29
 
 
 
-### Evaluation with pretrained model
-To produce solution from best M solutions (M=1280), use
+### Evaluation with pretrained revisers
+To solve 10k TSP100:
 ```bash
-python eval.py --dataset_path data/tsp/tsp20_test_seed1234.pkl --seeder pretrained_LCP/Seeder/seeder_tsp_20/epoch-99.pt --reviser pretrained_LCP/Reviser/reviser_10/epoch-99.pt --softmax_temperature 2 --width 1280 
+python main.py --problem_size 20 --revision_lens 100 20 10 --revision_iters 10 5 --shift_lens 2 2 --aug --aug_shift 5 --eval_batch_size 1000 --val_size 10000
+```
+```bash
+python main.py --problem_size 50 --revision_lens 50 20 10 --revision_iters 25 10 5 --shift_lens 2 2 2 --aug --aug_shift 5 --eval_batch_size 1000 --val_size 10000
 ```
 
-#### LCP star
-To use two (can be more, but code must be revised) reviser, use
+TSP20 
 ```bash
-python eval.py --dataset_path data/tsp/tsp100_test_seed1234.pkl --seeder pretrained_LCP/Seeder/seeder_tsp_100/epoch-99.pt --reviser pretrained_LCP/Reviser/reviser_20/epoch-99.pt --reviser pretrained_LCP/Reviser/reviser_10/epoch-99.pt --softmax_temperature 2 --width 1280 
+python main.py --problem_size 20 --revision_lens 20 10 --revision_iters 10 5 --shift_lens 2 2 --aug --aug_shift 5 --eval_batch_size 1000 --val_size 10000
 ```
-#### Number of Reviser Iteration (I)
-
-To adjust the number of iteration of reviser, (I=20), use
-
-```bash
---revision_iter1 20
-```
-
-For LCP star, use as 
-
-```bash
---revision_iter1 20 --revision_iter2 25
-```
-
-#### Revision Length (Note length of sub-problem to revise)
-
-Use as 
-
-```bash
---revision_len1 10
-```
-
-For LCP star, use as 
-
-```bash
---revision_len1 20 --revision_len2 10
-```
-
-#### Softmax Temperature 
-
-To solve small (N=20,50) problem use high temperature as  
-
-```bash
---softmax_temperature 2
-```
-
-To solve large (N=500) problem use low temperature as  
-
-```bash
---softmax_temperature 0.3
-```
-
-### Training seeder and reviser
-
-#### Training Seeder
-
-Training Seeder (N=20) with entropy loss (weight=2)
-
-```bash
-python run.py --alp 2 --graph_size 20 --policy_mode seeder
-```
-
-
-#### Training Reviser
-
-Training Reviser (N=10, usually smaller sized than seeder)
-
-```bash
-python run.py --alp 0 --graph_size 20 --policy_mode reviser --problem local
-```
-
-#### Multiple GPU
-
-Defaults training setting is using all GPU devices. Restrict GPU usage as follows:
-
-Two GPU:
-```bash
-CUDA_VISIBLE_DEVICES=0,1 python run.py 
-```
-
-Single GPU:
-```bash
-CUDA_VISIBLE_DEVICES=0 python run.py 
-```
-
-
-### Other usage
-
-```bash
-python run.py -h
-python eval.py -h
-```
-
 
 
 ## Dependencies

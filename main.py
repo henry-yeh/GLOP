@@ -14,30 +14,6 @@ import pprint as pp
 mp = torch.multiprocessing.get_context('spawn')
 
 
-# def get_best(sequences, cost, ids=None, batch_size=None):
-#     """
-#     Ids contains [0, 0, 0, 1, 1, 2, ..., n, n, n] if 3 solutions found for 0th instance, 2 for 1st, etc
-#     :param sequences:
-#     :param lengths:
-#     :param ids:
-#     :return: list with n sequences and list with n lengths of solutions
-#     """
-#     if ids is None:
-#         idx = cost.argmin()
-#         return sequences[idx:idx+1, ...], cost[idx:idx+1, ...]
-
-#     splits = np.hstack([0, np.where(ids[:-1] != ids[1:])[0] + 1])
-#     mincosts = np.minimum.reduceat(cost, splits)
-
-#     group_lengths = np.diff(np.hstack([splits, len(ids)]))
-#     all_argmin = np.flatnonzero(np.repeat(mincosts, group_lengths) == cost)
-#     result = np.full(len(group_lengths) if batch_size is None else batch_size, -1, dtype=int)
-
-#     result[ids[all_argmin[::-1]]] = all_argmin[::-1]
-
-#     return [sequences[i] if i >= 0 else None for i in result], [cost[i] if i >= 0 else math.inf for i in result]
-
-
 def eval_dataset(dataset_path, opts):
     pp.pprint(vars(opts))
     use_cuda = torch.cuda.is_available() and not opts.no_cuda
@@ -56,7 +32,7 @@ def eval_dataset(dataset_path, opts):
     for reviser in revisers:
         reviser.to(device)
         reviser.eval()
-        reviser.set_decode_type(opts.decode_strategy) # TODO sampling may be better
+        reviser.set_decode_type(opts.decode_strategy)
 
     dataset = reviser.problem.make_dataset(filename=dataset_path, num_samples=opts.val_size, offset=0)
     results = _eval_dataset(dataset, opts, device, revisers)
@@ -90,29 +66,21 @@ def _eval_dataset(dataset, opts, device, revisers):
         start = time.time()
         with torch.no_grad():
                 
-            if opts.FI:
-                pi_batch = torch.LongTensor(size=(opts.eval_batch_size, opts.problem_size))
-                for instance_id, instance in enumerate(batch):
+            pi_batch = torch.LongTensor(size=(opts.eval_batch_size, opts.problem_size))
+            for instance_id, instance in enumerate(batch):
 
-                    cost, pi, duration = solve_insertion(
-                                            directory=None, 
-                                            name=None, 
-                                            loc=instance,
-                                            method='farthest',
-                                            )
-                    avg_cost += cost
-                    pi_batch[instance_id] = torch.tensor(pi)
-                avg_cost /= opts.eval_batch_size
-
-            else:
-                pi_batch = torch.stack([torch.randperm(opts.problem_size) for _ in range(opts.width*opts.eval_batch_size)])
-                batch = batch.repeat(opts.width, 1, 1)
+                cost, pi, duration = solve_insertion(
+                                        directory=None, 
+                                        name=None, 
+                                        loc=instance,
+                                        method='farthest',
+                                        )
+                avg_cost += cost
+                pi_batch[instance_id] = torch.tensor(pi)
+            avg_cost /= opts.eval_batch_size
                 
             seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
             seed = seed.to(device)
-
-            if not opts.FI:
-                avg_cost = ((seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)).mean()
 
             if opts.aug:
                 
@@ -159,19 +127,13 @@ if __name__ == "__main__":
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
     parser.add_argument('--revision_iters', nargs='+', default=[10,0,0,], type=int)
     parser.add_argument('--shift_lens', nargs='+', default=[10,2,1], type=int)
-    parser.add_argument('--decode_strategy', type=str, default='greedy', help='decode strategy of the model')
-    parser.add_argument('--width', type=int, default=1, help='number of candidate solutions / seeds (M)')
+    parser.add_argument('--decode_strategy', type=str, default='sampling', help='decode strategy of the model')
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
-    parser.add_argument('--FI', action='store_true')
     parser.add_argument('--aug', action='store_true')
     parser.add_argument('--aug_shift', type=int, default=1, help='')
     
     opts = parser.parse_args()
-    if not opts.FI: # random initialization
-        assert not opts.aug, "Cannot implement instance augmentation when initializing randomly! "
-    else:   # farthest insertion
-        assert  opts.width == 1, "Cannot implement width when initializing with farthest insertion!"
-    
+
     dataset_path = f'data/tsp/tsp{opts.problem_size}_test.pkl'
     eval_dataset(dataset_path, opts)

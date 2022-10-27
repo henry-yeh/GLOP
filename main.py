@@ -24,7 +24,7 @@ def eval_dataset(dataset_path, opts):
     revision_lens = opts.revision_lens
 
     for reviser_size in revision_lens:
-        reviser_path = f'pretrained/Reviser-ft/reviser_{reviser_size}/epoch-299.pt'
+        reviser_path = f'pretrained/Reviser-stage2/reviser_{reviser_size}/epoch-299.pt'
         
         reviser, _ = load_model(reviser_path, is_local=True)
         revisers.append(reviser)
@@ -65,27 +65,41 @@ def _eval_dataset(dataset, opts, device, revisers):
         avg_cost = 0
         start = time.time()
         with torch.no_grad():
-                
-            pi_batch = torch.LongTensor(size=(opts.eval_batch_size, opts.problem_size))
-            for instance_id, instance in enumerate(batch):
+    
+            pi_batch = []
 
-                cost, pi, duration = solve_insertion(
-                                        directory=None, 
-                                        name=None, 
-                                        loc=instance,
-                                        method='farthest',
-                                        )
-                avg_cost += cost
-                pi_batch[instance_id] = torch.tensor(pi)
-            avg_cost /= opts.eval_batch_size
-                
+            orders = [torch.randperm(opts.problem_size) for i in range(opts.aug_shift)]
+            insertion_start = time.time()
+            for order_id in range(len(orders)):
+                for instance_id, instance in enumerate(batch):
+                    cost, pi, duration = solve_insertion(
+                                            directory=None, 
+                                            name=None, 
+                                            loc=instance,
+                                            method='random',
+                                            order=orders[order_id]
+                                            )
+
+                    pi_batch.append(torch.tensor(pi))
+                    
+            print('insertion time:', time.time()-insertion_start)
+
+            pi_batch = torch.stack(pi_batch) # (bs*aug_shift)
+
+            batch = batch.repeat(opts.aug_shift, 1, 1)
+
             seed = batch.gather(1, pi_batch.unsqueeze(-1).expand_as(batch))
             seed = seed.to(device)
 
+            cost_ori = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
+            cost_ori, _ = cost_ori.reshape(-1, opts.eval_batch_size).min(0) # width, bs
+            avg_cost = cost_ori.mean().item()
+            print('before revision:', avg_cost)  
+
             if opts.aug:
                 
-                if opts.aug_shift > 1:
-                    seed = torch.cat([torch.roll(seed, i, 1) for i in range(0, opts.aug_shift)], dim=0)
+                # if opts.aug_shift > 1:
+                #     seed = torch.cat([torch.roll(seed, i, 1) for i in range(0, opts.aug_shift)], dim=0)
                 seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
                 seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
                 seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
@@ -125,9 +139,9 @@ if __name__ == "__main__":
     parser.add_argument('--eval_batch_size', type=int, default=128,
                         help="Batch size to use during (baseline) evaluation")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int)
-    parser.add_argument('--revision_iters', nargs='+', default=[10,0,0,], type=int)
-    parser.add_argument('--shift_lens', nargs='+', default=[10,2,1], type=int)
-    parser.add_argument('--decode_strategy', type=str, default='sampling', help='decode strategy of the model')
+    parser.add_argument('--revision_iters', nargs='+', default=[20,25,10,], type=int)
+    parser.add_argument('--shift_lens', nargs='+', default=[5,2,2], type=int)
+    parser.add_argument('--decode_strategy', type=str, default='greedy', help='decode strategy of the model')
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
     parser.add_argument('--aug', action='store_true')

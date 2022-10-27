@@ -248,9 +248,7 @@ def reconnect(
     ):
 
     seed = batch
-    cost_ori = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-    cost_ori, _ = cost_ori.reshape(-1, opts.eval_batch_size).min(0) # width, bs
-    print('before revision:', cost_ori.mean().item())
+
     for revision_id in range(len(revisers)):
         start_time = time.time()
 
@@ -265,9 +263,7 @@ def reconnect(
             )
         
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-
         cost_revised, cost_revised_minidx = cost_revised.reshape(-1, opts.eval_batch_size).min(0) # width, bs
-
         duration = time.time() - start_time
 
         print(f'after construction {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')

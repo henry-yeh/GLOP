@@ -77,9 +77,11 @@ python run.py --data_distribution scale --FI_train --graph_size 10 --lr_decay 0.
 
 
 ### Evaluation with pretrained revisers
-To solve 10k TSP100:
+
+
+To solve 10k TSP20: 
 ```bash
-python main.py --problem_size 20 --revision_lens 100 20 10 --revision_iters 10 5 --shift_lens 2 2 --aug --aug_shift 5 --eval_batch_size 1000 --val_size 10000
+python main.py --problem_size 20 --revision_lens 20 10 --revision_iters 10 5 --shift_lens 2 2 --aug --aug_shift 5 --eval_batch_size 1000 --val_size 10000
 ```
 
 To solve 10k TSP50:
@@ -87,11 +89,30 @@ To solve 10k TSP50:
 python main.py --problem_size 50 --revision_lens 50 20 10 --revision_iters 25 10 5 --shift_lens 2 2 2 --aug --aug_shift 5 --eval_batch_size 1000 --val_size 10000
 ```
 
-To solve 10k TSP20: 
+To solve 10k TSP100:
 ```bash
-python main.py --problem_size 20 --revision_lens 20 10 --revision_iters 10 5 --shift_lens 2 2 --aug --aug_shift 5 --eval_batch_size 1000 --val_size 10000
+python main.py --problem_size 20 --revision_lens 100 20 10 --revision_iters 10 5 --shift_lens 2 2 --aug --aug_shift 5 --eval_batch_size 1000 --val_size 10000
 ```
 
+To solve 128 TSP200: 
+```bash
+python main.py --aug --aug_shift 20 --problem_size 200 --revision_iters 20 25 10 --revision_lens 100 50 20 --eval_batch_size 128  --shift_lens 5 2 2 --val_size 128
+```
+
+To solve 128 TSP500: 
+```bash
+python main.py --aug --aug_shift 20 --problem_size 500 --revision_iters 20 25 10 --revision_lens 100 50 20 --eval_batch_size 32  --shift_lens 5 2 2 --val_size 128
+```
+
+To solve 128 TSP1000: 
+```bash
+python main.py --aug --aug_shift 20 --problem_size 1000 --revision_iters 20 25 10 --revision_lens 100 50 20 --eval_batch_size 16  --shift_lens 5 2 2 --val_size 128
+```
+
+To solve 16 TSP1000: 
+```bash
+python main.py --aug --aug_shift 20 --problem_size 10000 --revision_iters 20 25 10 --revision_lens 100 50 20 --eval_batch_size 2  --shift_lens 5 2 2 --val_size 16
+```
 
 ## Dependencies
 

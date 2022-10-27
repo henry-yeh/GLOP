@@ -300,7 +300,7 @@ def _calc_insert_cost(D, prv, nxt, ins):
     )
 
 
-def run_insertion(loc, method):
+def run_insertion(loc, method, order):
     n = len(loc)
     D = distance_matrix(loc, loc)
     # D = torch.norm(loc[:, None]-loc, dim=2, p=2)
@@ -308,12 +308,13 @@ def run_insertion(loc, method):
     mask = np.zeros(n, dtype=bool)
     tour = []  # np.empty((0, ), dtype=int)
     for i in range(n):
-        feas = mask == 0
-        feas_ind = np.flatnonzero(mask == 0)
+        # feas = mask == 0
+        # feas_ind = np.flatnonzero(mask == 0)
         if method == 'random':
             # Order of instance is random so do in order for deterministic results
-            a = i
+            a = order[i].item()
         elif method == 'nearest':
+            raise NotImplementedError
             if i == 0:
                 a = 0  # order does not matter so first is random
             else:
@@ -322,11 +323,12 @@ def run_insertion(loc, method):
             assert False, "Not yet implemented" # try all and find cheapest insertion cost
 
         elif method == 'farthest':
+            raise NotImplementedError
             if i == 0:
                 a = D.max(1).argmax()  # Node with farthest distance to any other node
             else:
                 a = feas_ind[D[np.ix_(feas, ~feas)].min(1).argmax()]  # node which has closest node in tour farthest
-        mask[a] = True
+        # mask[a] = True
 
         if len(tour) == 0:
             tour = [a]
@@ -346,9 +348,9 @@ def run_insertion(loc, method):
     return cost, tour
 
 
-def solve_insertion(directory, name, loc, method):
+def solve_insertion(directory, name, loc, method, order=None):
     start = time.time()
-    cost, tour = run_insertion(loc, method)
+    cost, tour = run_insertion(loc, method, order=order)
     duration = time.time() - start
     return cost, tour, duration
 

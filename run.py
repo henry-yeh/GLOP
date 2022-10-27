@@ -18,9 +18,6 @@ from nets.attention_local import AttentionModel
 
 from utils import torch_load_cpu, load_problem
 
-# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-# import multiprocessing as mp
-# mp.set_start_method('spawn')
 
 def run(opts):
 
@@ -76,8 +73,6 @@ def run(opts):
     model_.load_state_dict({**model_.state_dict(), **load_data.get('model', {})})
 
     # Initialize baseline
-    # if opts.baseline == 'exponential':
-    #     baseline = ExponentialBaseline(opts.exp_beta)
     if opts.baseline == 'rollout':
         baseline = RolloutBaseline(model, problem, opts)
         print('load rollout baseline ......')
@@ -115,6 +110,7 @@ def run(opts):
     lr_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: opts.lr_decay ** epoch)
     lr_scheduler2 = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[], gamma=1)
     lr_schedulers = [lr_scheduler, lr_scheduler2]
+
     # Start the actual training loop
 
     # make validation dataset

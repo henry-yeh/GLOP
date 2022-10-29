@@ -16,7 +16,7 @@ def solve_and_decompose(instance, opts):
                             directory=None, 
                             name=None, 
                             loc=instance,
-                            method='farthest',
+                            method='random',
                             )
     
     instance = instance.unsqueeze(0)
@@ -83,8 +83,8 @@ def generate_tsp_data(dataset_size, opts):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", default='data/FI_train_tsp', help="Create datasets in data_dir")
-    parser.add_argument("--name", default='FI', type=str, help="Name to identify dataset")
+    parser.add_argument("--data_dir", default='data/RI_train_tsp', help="Create datasets in data_dir")
+    parser.add_argument("--name", default='RI', type=str, help="Name to identify dataset")
     parser.add_argument("--dataset_size", type=int, default=1000000, help="Size of the dataset")
     parser.add_argument('--graph_size', type=int, default=500,
                         help="Sizes of problem instances")

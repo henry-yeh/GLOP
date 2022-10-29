@@ -136,10 +136,8 @@ def run(opts):
         validate(model, val_dataset, opts)
     else:
         start_time = time()
-        if opts.FI_train:
-            filename = opts.FI_path
-            # train_dataset = problem.make_dataset( # TODO change here, make it a torch tensor
-            #     filename = filename)
+        if opts.RI_train:
+            filename = opts.RI_path
             train_dataset = torch.load(filename, map_location=opts.device)
             print('----load training samples from {}----'.format(filename))
             print(len(train_dataset))

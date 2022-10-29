@@ -37,22 +37,22 @@ Once you obtain the revisers that have finished the 2nd-stage curriculum learnin
 
 To generate training dataset for Reviser-100:
 ```bash
-python generate_data_FI.py
+python generate_data_RI.py
 ```
 
 To fine-tune Reviser-100:
 ```bash
-python run.py --data_distribution scale --FI_train --graph_size 100 --lr_decay 0.99 --FI_path data/FI_train_tsp/500_FI100_seed1235.pt --load_path pretrained/Reviser-stage1/reviser_100/epoch-199.pt --n_epochs 300 --checkpoint_epochs 100
+python run.py --data_distribution scale --RI_train --graph_size 100 --lr_decay 0.99 --RI_path data/RI_train_tsp/500_RI100_seed1235.pt --load_path pretrained/Reviser-stage1/reviser_100/epoch-199.pt --n_epochs 300 --checkpoint_epochs 100
 ```
 
 To generate training dataset for Reviser-50 with Reviser-100:
 ```bash
-python generate_data_RG.py --load_path pretrained/Reviser-stage2/reviser_100/epoch-299.pt --data_path data/FI_train_tsp/500_FI100_seed1235.pt --tgt_size 50 --revision_lens 100 --batch_size 50
+python generate_data_RG.py --load_path pretrained/Reviser-stage2/reviser_100/epoch-299.pt --data_path data/RI_train_tsp/500_RI100_seed1235.pt --tgt_size 50 --revision_lens 100 --batch_size 50
 ```
 
 To fine-tune Reviser-50:
 ```bash
-python run.py --data_distribution scale --FI_train --graph_size 50 --lr_decay 0.99 --FI_path data/RG_train_tsp/RG50.pt --load_path pretrained/Reviser-stage1/reviser_50/epoch-199.pt --n_epochs 300 --checkpoint_epochs 100
+python run.py --data_distribution scale --RI_train --graph_size 50 --lr_decay 0.99 --RI_path data/RG_train_tsp/RG50.pt --load_path pretrained/Reviser-stage1/reviser_50/epoch-199.pt --n_epochs 300 --checkpoint_epochs 100
 ```
 
 To generate training dataset for Reviser-20 with Reviser-50:
@@ -62,7 +62,7 @@ python generate_data_RG.py --load_path pretrained/Reviser-stage2/reviser_50/epoc
 
 To fine-tune Reviser-20:
 ```bash
-python run.py --data_distribution scale --FI_train --graph_size 20 --lr_decay 0.99 --FI_path data/RG_train_tsp/RG20.pt --load_path pretrained/Reviser-stage1/reviser_20/epoch-199.pt --n_epochs 300 --checkpoint_epochs 100
+python run.py --data_distribution scale --RI_train --graph_size 20 --lr_decay 0.99 --RI_path data/RG_train_tsp/RG20.pt --load_path pretrained/Reviser-stage1/reviser_20/epoch-199.pt --n_epochs 300 --checkpoint_epochs 100
 ```
 
 To generate training dataset for Reviser-10 with Reviser-20:
@@ -72,7 +72,7 @@ python generate_data_RG.py --load_path pretrained/Reviser-stage2/reviser_20/epoc
 
 To fine-tune Reviser-10:
 ```bash
-python run.py --data_distribution scale --FI_train --graph_size 10 --lr_decay 0.99 --FI_path data/RG_train_tsp/RG10.pt --load_path pretrained/Reviser-stage1/reviser_10/epoch-99.pt --n_epochs 300 --checkpoint_epochs 100
+python run.py --data_distribution scale --RI_train --graph_size 10 --lr_decay 0.99 --RI_path data/RG_train_tsp/RG10.pt --load_path pretrained/Reviser-stage1/reviser_10/epoch-99.pt --n_epochs 300 --checkpoint_epochs 100
 ```
 
 

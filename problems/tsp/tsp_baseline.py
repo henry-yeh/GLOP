@@ -312,7 +312,10 @@ def run_insertion(loc, method, order):
         # feas_ind = np.flatnonzero(mask == 0)
         if method == 'random':
             # Order of instance is random so do in order for deterministic results
-            a = order[i].item()
+            if order is None:
+                a = i
+            else:
+                a = order[i].item()
         elif method == 'nearest':
             raise NotImplementedError
             if i == 0:

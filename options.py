@@ -69,8 +69,8 @@ def get_options(args=None):
     parser.add_argument('--resume',  help='Resume from previous checkpoint file')
     parser.add_argument('--no_tensorboard', action='store_true', help='Disable logging TensorBoard files')
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
-    parser.add_argument('--FI_train', action='store_true', help='Train with the samples generated with farthest insertion')
-    parser.add_argument('--FI_path', help='Train with the samples generated with farthest insertion')
+    parser.add_argument('--RI_train', action='store_true', help='Train with the samples generated with farthest insertion')
+    parser.add_argument('--RI_path', help='Train with the samples generated with farthest insertion')
 
     opts = parser.parse_args(args)
 

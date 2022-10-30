@@ -10,8 +10,9 @@ from utils.functions import reconnect
 from utils.functions import load_problem
 from problems.tsp.tsp_baseline import solve_insertion
 import pprint as pp
+from concurrent.futures import ProcessPoolExecutor
 
-mp = torch.multiprocessing.get_context('spawn')
+# mp = torch.multiprocessing.get_context('spawn')
 
 
 def eval_dataset(dataset_path, opts):
@@ -50,6 +51,19 @@ def eval_dataset(dataset_path, opts):
 
     return costs, tours, durations
 
+def _solve_insertion(args):
+
+    instance, order = args
+        
+    cost, pi, duration = solve_insertion(
+                            directory=None, 
+                            name=None, 
+                            loc=instance,
+                            method='random',
+                            order=order
+                            )
+
+    return pi
 
 def _eval_dataset(dataset, opts, device, revisers):
 
@@ -66,25 +80,24 @@ def _eval_dataset(dataset, opts, device, revisers):
         start = time.time()
         with torch.no_grad():
     
-            pi_batch = []
+            
 
             orders = [torch.randperm(opts.problem_size) for i in range(opts.aug_shift)]
             insertion_start = time.time()
-            for order_id in range(len(orders)):
-                for instance_id, instance in enumerate(batch):
-                    cost, pi, duration = solve_insertion(
-                                            directory=None, 
-                                            name=None, 
-                                            loc=instance,
-                                            method='random',
-                                            order=orders[order_id]
-                                            )
 
-                    pi_batch.append(torch.tensor(pi))
-                    
+            instance = batch[0]
+
+            with ProcessPoolExecutor() as pool:
+                futures = [pool.submit(_solve_insertion, index)
+                        for index in [
+                                (instance, orders[order_id]) for order_id in range(len(orders)) for instance in batch
+                            ]
+                        ]
+
+                pi_batch = torch.tensor([future.result() for future in futures])
+                print(len(pi_batch))
+
             print('insertion time:', time.time()-insertion_start)
-
-            pi_batch = torch.stack(pi_batch) # (bs*aug_shift)
 
             batch = batch.repeat(opts.aug_shift, 1, 1)
 

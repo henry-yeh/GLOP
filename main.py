@@ -12,8 +12,6 @@ from problems.tsp.tsp_baseline import solve_insertion
 import pprint as pp
 from concurrent.futures import ProcessPoolExecutor
 
-# mp = torch.multiprocessing.get_context('spawn')
-
 
 def eval_dataset(dataset_path, opts):
     pp.pprint(vars(opts))

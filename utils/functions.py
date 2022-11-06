@@ -187,19 +187,28 @@ def decomposition(seeds, coordinate_dim, revision_len, offset, shift_len = 1):
     decomposed_seeds = decomposed_seeds.reshape(-1, revision_len, coordinate_dim)
     return decomposed_seeds, offset_seeds
 
-def revision(revision_cost_func, reviser, decomposed_seeds, original_subtour):
+def revision(revision_cost_func, reviser, decomposed_seeds, original_subtour, iter=None, embeddings=None):
 
     # tour length of segment TSPs
     init_cost = revision_cost_func(decomposed_seeds, original_subtour)
-    cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(decomposed_seeds, return_pi=True)
+
+    if iter is None:
+        cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(decomposed_seeds, return_pi=True)
+    elif iter == 0:
+        cost_revised1, sub_tour1, cost_revised2, sub_tour2, embeddings = reviser(decomposed_seeds, return_pi=True, return_embedding=True)
+    else:
+        cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(decomposed_seeds, return_pi=True, embeddings=embeddings)
+
     cost_revised, better_tour_idx = torch.stack((cost_revised1, cost_revised2)).min(dim=0)
     sub_tour = torch.stack((sub_tour1, sub_tour2))[better_tour_idx, torch.arange(sub_tour1.shape[0])]
     reduced_cost = init_cost - cost_revised
 
     sub_tour[reduced_cost < 0] = original_subtour
     decomposed_seeds = decomposed_seeds.gather(1, sub_tour.unsqueeze(-1).expand_as(decomposed_seeds))
+    if embeddings is not None:
+        embeddings = embeddings.gather(1, sub_tour.unsqueeze(-1).expand_as(embeddings))
 
-    return decomposed_seeds
+    return decomposed_seeds, embeddings
 
 def LCP_TSP(
     seeds,
@@ -214,10 +223,11 @@ def LCP_TSP(
     # width, problem_size, 2 (for TSP)
     batch_size, num_nodes, coordinate_dim = seeds.shape
 
-
     offset = num_nodes % revision_len
 
-    for _ in range(revision_iter):
+    embeddings = None # used only in case problem_size == revision_len for efficiency
+
+    for i in range(revision_iter):
 
         decomposed_seeds, offset_seed = decomposition(seeds, 
                                         coordinate_dim,
@@ -225,13 +235,14 @@ def LCP_TSP(
                                         offset,
                                         shift_len
                                         )
-        if torch.cuda.is_available():
-            original_subtour = torch.arange(0, revision_len, dtype=torch.long).cuda()
+
+        original_subtour = torch.arange(0, revision_len, dtype=torch.long).to(decomposed_seeds.device)
+
+        if revision_len == num_nodes:
+            decomposed_seeds_revised, embeddings = revision(cost_func, reviser, decomposed_seeds, original_subtour, iter=i, embeddings=embeddings)
+            embeddings = torch.cat([embeddings[:, shift_len:],embeddings[:, :shift_len]], 1) # roll the embeddings
         else:
-            original_subtour = torch.arange(0, revision_len, dtype=torch.long)
-    
-        decomposed_seeds_revised = revision(cost_func, reviser, decomposed_seeds, original_subtour)
-        
+            decomposed_seeds_revised, _ = revision(cost_func, reviser, decomposed_seeds, original_subtour)
 
         seeds = decomposed_seeds_revised.reshape(batch_size, -1, coordinate_dim)
 
@@ -252,6 +263,8 @@ def reconnect(
     for revision_id in range(len(revisers)):
         start_time = time.time()
 
+        shift_len = max(opts.revision_lens[revision_id]//opts.revision_iters[revision_id], 1)
+
         seed = LCP_TSP(
             seed, 
             get_cost_func,
@@ -259,7 +272,7 @@ def reconnect(
             opts.revision_lens[revision_id],
             opts.revision_iters[revision_id],
             opts=opts,
-            shift_len=opts.shift_lens[revision_id]
+            shift_len=shift_len
             )
         
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)

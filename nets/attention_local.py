@@ -130,7 +130,7 @@ class AttentionModel(nn.Module):
         if temp is not None:  # Do not change temperature if not provided
             self.temp = temp
 
-    def forward(self, input, return_pi=False):
+    def forward(self, input, return_pi=False, return_embedding=False, embeddings=None):
         """
         :param input: (batch_size, graph_size, node_dim) input node features or dictionary with multiple tensors
         :param return_pi: whether to return the output sequences, this is optional as it is not compatible with
@@ -167,14 +167,15 @@ class AttentionModel(nn.Module):
         
         if self.checkpoint_encoder and self.training:  # Only checkpoint if we need gradients
             embeddings, _ = checkpoint(self.embedder, self._init_embed(input))
-        else:
-            
+        
+        elif embeddings is None:
             embeddings, _ = self.embedder(self._init_embed(input))
-        # embeddings shape: (batch size (i.e. width x decomposed pieces), problem size, embedding size)
+
+
+        # embeddings shape: (batch size (e.g. width x decomposed pieces), problem size, embedding size)
 
         # _log_p, pi, entropies = self._inner(input, embeddings)
         _log_p, pi, _log_p2, pi2 = self._inner(input, embeddings)
-        # entropies = entropies.mean(1)
 
         # for inference, inverse coordinate transformation
         if return_pi:
@@ -186,11 +187,13 @@ class AttentionModel(nn.Module):
         cost, mask = self.problem.get_costs(input, pi)
         cost2, mask2 = self.problem.get_costs(input, pi2)
         if return_pi:
+            if return_embedding:
+                return cost, pi, cost2, torch.flip(pi2, dims=(-1,)), embeddings
             return cost, pi, cost2, torch.flip(pi2, dims=(-1,))
             
         ll = self._calc_log_likelihood(_log_p, pi, mask)
         ll2 = self._calc_log_likelihood(_log_p2, pi2, mask2)
-
+    
         return cost, ll, cost2, ll2
 
         

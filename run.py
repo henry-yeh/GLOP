@@ -65,8 +65,8 @@ def run(opts):
         shrink_size=opts.shrink_size
     ).to(opts.device)
 
-    if opts.use_cuda and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model)
+    # if opts.use_cuda and torch.cuda.device_count() > 1:
+    #     model = torch.nn.DataParallel(model)
 
     # Overwrite model parameters by parameters to load
     model_ = get_inner_model(model)

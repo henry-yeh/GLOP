@@ -81,16 +81,20 @@ def _eval_dataset(dataset, opts, device, revisers):
     
     insertion_start = time.time()
 
-    with ProcessPoolExecutor() as pool:
-        futures = [pool.submit(_solve_insertion, index)
-                for index in [
-                        (instance, orders[order_id]) for order_id in range(len(orders)) for instance in dataset
+    if opts.val_size > 1:
+        with ProcessPoolExecutor() as pool:
+            futures = [pool.submit(_solve_insertion, index)
+                    for index in [
+                            (instance, orders[order_id]) for order_id in range(len(orders)) for instance in dataset
+                        ]
                     ]
-                ]
 
-        pi_all = torch.tensor([future.result() for future in futures]).reshape(opts.width, opts.val_size, opts.problem_size)
-        
-        print(pi_all.shape) # width x val_size
+            pi_all = torch.tensor([future.result() for future in futures]).reshape(opts.width, opts.val_size, opts.problem_size)
+            
+            print(pi_all.shape) # width x val_size
+    else:
+            pi_all = torch.tensor([_solve_insertion((instance, orders[order_id])) \
+                for order_id in range(len(orders)) for instance in dataset]).reshape(opts.width, opts.val_size, opts.problem_size)
 
     print('total insertion time:', time.time()-insertion_start)
 
@@ -166,12 +170,17 @@ if __name__ == "__main__":
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument("--device_id", type=int, default=0)
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
-    parser.add_argument('--aug', action='store_true')
+    parser.add_argument('--aug', action='store_true', help='Do flip x4')
     parser.add_argument('--aug_shift', type=int, default=1, help='The maximum tour shift for tour augmentation (S+1)')
     parser.add_argument('--width', type=int, default=1, 
                         help='The initial solutions for a TSP instance generated with diversified insertion')
-    
+    parser.add_argument('--path', type=str, default='', 
+                        help='The test dataset path for cross-distribution evaluation')
     opts = parser.parse_args()
 
-    dataset_path = f'data/tsp/tsp{opts.problem_size}_test.pkl'
+    if opts.path == '':
+        dataset_path = f'data/tsp/tsp{opts.problem_size}_test.pkl'
+    else:
+        dataset_path = opts.path
+    
     eval_dataset(dataset_path, opts)

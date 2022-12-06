@@ -78,7 +78,12 @@ python main.py --problem_size 1000 --revision_iters 20 25 10 --revision_lens 100
 
 # To reproduce the best result on 16 TSP10k:
 python main.py --problem_size 10000 --revision_iters 20 25 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 1 --eval_batch_size 16 --val_size 16 --decode_strategy greedy
+
+# To conduct cross-distribution evaluation, e.g.:
+python main.py --problem_size 100 --revision_lens 100 50 20 10 --revision_iters 20 10 10 5 --aug --aug_shift 1 --width 35 --eval_batch_size 100 --val_size 10000 --decode_strategy sampling --path data/tsp/tsp_uniform100_10000.pkl
+
 ```
+
 
 To reduce the inference duration, try:
 ```bash

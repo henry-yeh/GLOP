@@ -1,5 +1,5 @@
 #define PY_SSIZE_T_CLEAN
-#include <python3.10/Python.h>
+#include <Python.h>
 #include "head.h"
 #include <iostream>
 #include "numpy/arrayobject.h"
@@ -52,7 +52,7 @@ insertion_random(PyObject *self, PyObject *args)
 
 static PyMethodDef InsertionMethods[] = {
     {"random", insertion_random, METH_VARARGS,
-     "Execute a shell command."},
+     "Execute random insertion."},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef insertionmodule = {

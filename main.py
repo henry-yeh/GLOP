@@ -11,6 +11,7 @@ from utils.functions import load_problem
 from problems.tsp.tsp_baseline import solve_insertion
 import pprint as pp
 from concurrent.futures import ProcessPoolExecutor
+from utils.insertion import random_insertion
 
 torch.manual_seed(1)
 
@@ -55,15 +56,16 @@ def _solve_insertion(args):
 
     instance, order = args
         
-    cost, pi, duration = solve_insertion(
-                            directory=None, 
-                            name=None, 
-                            loc=instance,
-                            method='random',
-                            order=order
-                            )
+    # cost, pi, duration = solve_insertion(
+    #                         directory=None, 
+    #                         name=None, 
+    #                         loc=instance,
+    #                         method='random',
+    #                         order=order
+    #                         )
+    route, cost = random_insertion(instance, order)
 
-    return pi
+    return route
 
 def _eval_dataset(dataset, opts, device, revisers):
 

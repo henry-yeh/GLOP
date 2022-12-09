@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 import time
 from utils.functions import reconnect
 from utils.functions import load_problem
-from problems.tsp.tsp_baseline import solve_insertion
+# from problems.tsp.tsp_baseline import solve_insertion
 import pprint as pp
 from concurrent.futures import ProcessPoolExecutor
 from utils.insertion import random_insertion
@@ -91,13 +91,12 @@ def _eval_dataset(dataset, opts, device, revisers):
                         ]
                     ]
 
-            pi_all = torch.tensor([future.result() for future in futures]).reshape(opts.width, opts.val_size, opts.problem_size)
+            pi_all = torch.tensor([future.result().astype(np.int64) for future in futures]).reshape(opts.width, opts.val_size, opts.problem_size)
             
             print(pi_all.shape) # width x val_size
     else:
-            pi_all = torch.tensor([_solve_insertion((instance, orders[order_id])) \
+            pi_all = torch.tensor([_solve_insertion((instance, orders[order_id])).astype(np.int64) \
                 for order_id in range(len(orders)) for instance in dataset]).reshape(opts.width, opts.val_size, opts.problem_size)
-
     print('total insertion time:', time.time()-insertion_start)
 
     for batch_id, batch in tqdm(enumerate(dataloader), disable=opts.no_progress_bar):

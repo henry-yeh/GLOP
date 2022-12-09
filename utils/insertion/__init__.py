@@ -11,10 +11,7 @@ def _to_numpy(arr):
         return arr
 
 
-def random_insertion(
-    cities: Union[np.ndarray, torch.Tensor],
-    order: Union[np.ndarray, torch.Tensor, None] = None
-) -> tuple[np.ndarray, float]:
+def random_insertion(cities, order):
 
     assert len(cities.shape) == 2 and cities.shape[1] == 2
     citycount = cities.shape[0]

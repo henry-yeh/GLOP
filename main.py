@@ -10,7 +10,7 @@ from utils.functions import reconnect
 from utils.functions import load_problem
 # from problems.tsp.tsp_baseline import solve_insertion
 import pprint as pp
-from concurrent.futures import ProcessPoolExecutor
+# from concurrent.futures import ProcessPoolExecutor
 from utils.insertion import random_insertion
 
 torch.manual_seed(1)
@@ -82,24 +82,10 @@ def _eval_dataset(dataset, opts, device, revisers):
     orders = [torch.randperm(opts.problem_size) for i in range(opts.width)]
     
     insertion_start = time.time()
-
-    if opts.val_size > 1 or opts.width > 1:
-        with ProcessPoolExecutor() as pool:
-            futures = [pool.submit(_solve_insertion, index)
-                    for index in [
-                            (instance, orders[order_id]) for order_id in range(len(orders)) for instance in dataset
-                        ]
-                    ]
-
-            pi_all = np.array([future.result() for future in futures]).astype(np.int64)
-            
-            print(pi_all.shape) # width x val_size
-    else:
-            pi_all = np.array([_solve_insertion((instance, orders[order_id])) \
-                for order_id in range(len(orders)) for instance in dataset]).astype(np.int64)
-    
-    pi_all = torch.tensor(pi_all).reshape(opts.width, opts.val_size, opts.problem_size)
+    pi_all = [_solve_insertion((instance, orders[order_id])) for order_id in range(len(orders)) for instance in dataset]
+    pi_all = torch.tensor(np.array(pi_all).astype(np.int64)).reshape(opts.width, opts.val_size, opts.problem_size)
     print('total insertion time:', time.time()-insertion_start)
+        
 
     for batch_id, batch in tqdm(enumerate(dataloader), disable=opts.no_progress_bar):
         # tsp batch shape: (bs, problem size, 2)

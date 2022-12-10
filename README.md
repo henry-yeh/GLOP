@@ -68,19 +68,19 @@ python main.py --eval_batch_size 500  --val_size 10000 --problem_size 50 --revis
 python main.py --problem_size 100 --revision_lens 100 50 20 10 --revision_iters 20 10 10 5 --aug --aug_shift 20 --eval_batch_size 200 --val_size 10000 --decode_strategy sampling
 
 # To reproduce the best result on 128 TSP200: 
-python main.py --problem_size 200 --revision_iters 20 25 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 20 --eval_batch_size 64 --val_size 128 --decode_strategy greedy
+python main.py --problem_size 200 --revision_iters 20 50 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 20 --eval_batch_size 64 --val_size 128 --decode_strategy greedy
 
 # To reproduce the best result on 128 TSP500:
-python main.py --problem_size 500 --revision_iters 20 25 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 20 --eval_batch_size 32 --val_size 128 --decode_strategy greedy
+python main.py --problem_size 500 --revision_iters 20 50 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 20 --eval_batch_size 32 --val_size 128 --decode_strategy greedy
 
 # To reproduce the best result on 128 TSP1000:
-python main.py --problem_size 1000 --revision_iters 20 25 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 20 --eval_batch_size 16 --val_size 128 --decode_strategy greedy
+python main.py --problem_size 1000 --revision_iters 20 50 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 20 --eval_batch_size 16 --val_size 128 --decode_strategy greedy
 
 # To reproduce the best result on 16 TSP10k:
-python main.py --problem_size 10000 --revision_iters 20 25 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 1 --eval_batch_size 16 --val_size 16 --decode_strategy greedy
+python main.py --problem_size 10000 --revision_iters 20 50 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 1 --eval_batch_size 16 --val_size 16 --decode_strategy greedy
 
 # To reproduce the best result on 1 TSP100k:
-python main.py --problem_size 100000 --revision_iters 20 25 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 1 --eval_batch_size 1 --val_size 1 --decode_strategy greedy
+python main.py --problem_size 100000 --revision_iters 20 50 10 --revision_lens 100 50 20 --aug --aug_shift 1 --width 1 --eval_batch_size 1 --val_size 1 --decode_strategy greedy
 
 # To conduct cross-distribution evaluation, e.g.:
 python main.py --problem_size 100 --revision_lens 100 50 20 10 --revision_iters 20 10 10 5 --aug --aug_shift 1 --width 35 --eval_batch_size 100 --val_size 10000 --decode_strategy sampling --path data/tsp/tsp_uniform100_10000.pkl

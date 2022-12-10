@@ -83,7 +83,7 @@ def _eval_dataset(dataset, opts, device, revisers):
     
     insertion_start = time.time()
 
-    if opts.val_size > 1:
+    if opts.val_size > 1 or opts.width > 1:
         with ProcessPoolExecutor() as pool:
             futures = [pool.submit(_solve_insertion, index)
                     for index in [
@@ -91,12 +91,14 @@ def _eval_dataset(dataset, opts, device, revisers):
                         ]
                     ]
 
-            pi_all = torch.tensor([future.result().astype(np.int64) for future in futures]).reshape(opts.width, opts.val_size, opts.problem_size)
+            pi_all = np.array([future.result() for future in futures]).astype(np.int64)
             
             print(pi_all.shape) # width x val_size
     else:
-            pi_all = torch.tensor([_solve_insertion((instance, orders[order_id])).astype(np.int64) \
-                for order_id in range(len(orders)) for instance in dataset]).reshape(opts.width, opts.val_size, opts.problem_size)
+            pi_all = np.array([_solve_insertion((instance, orders[order_id])) \
+                for order_id in range(len(orders)) for instance in dataset]).astype(np.int64)
+    
+    pi_all = torch.tensor(pi_all).reshape(opts.width, opts.val_size, opts.problem_size)
     print('total insertion time:', time.time()-insertion_start)
 
     for batch_id, batch in tqdm(enumerate(dataloader), disable=opts.no_progress_bar):

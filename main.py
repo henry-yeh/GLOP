@@ -104,21 +104,6 @@ def _eval_dataset(dataset, opts, device, revisers):
             cost_ori, _ = cost_ori.reshape(-1, opts.eval_batch_size).min(0) # width, bs
             avg_cost = cost_ori.mean().item()
             print('before revision:', avg_cost)  
-
-            if opts.aug:
-                
-                if opts.aug_shift > 1:
-                    seed = torch.cat([torch.roll(seed, i, 1) for i in range(0, opts.aug_shift)], dim=0)
-                seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
-                seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
-                seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
-                seed = torch.cat((seed, seed2, seed3, seed4), dim=0)
-                
-                assert seed.shape[0] == opts.eval_batch_size * opts.width * opts.aug_shift * 4
-
-            print('W =', seed.shape[0] // opts.eval_batch_size)
-
-            # needed shape: (width, graph_size, 2) / (width, graph_size)
             
             tours, costs_revised = reconnect( 
                                         get_cost_func=get_cost_func,
@@ -153,14 +138,12 @@ if __name__ == "__main__":
                         help="Batch size to use during (baseline) evaluation")
     parser.add_argument('--revision_lens', nargs='+', default=[100,50,20] ,type=int,
                         help='The sizes of revisers')
-    parser.add_argument('--revision_iters', nargs='+', default=[20,25,10,], type=int,
+    parser.add_argument('--revision_iters', nargs='+', default=[20,50,10,], type=int,
                         help='Revision iterations (I_n)')
-    parser.add_argument('--decode_strategy', type=str, default='greedy', help='decode strategy of the model')
+    parser.add_argument('--decode_strategy', type=str, default='sampling', help='decode strategy of the model')
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument("--device_id", type=int, default=0)
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
-    parser.add_argument('--aug', action='store_true', help='Do flip x4')
-    parser.add_argument('--aug_shift', type=int, default=1, help='The maximum tour shift for tour augmentation (S+1)')
     parser.add_argument('--width', type=int, default=1, 
                         help='The initial solutions for a TSP instance generated with diversified insertion')
     parser.add_argument('--path', type=str, default='', 

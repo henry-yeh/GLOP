@@ -190,19 +190,26 @@ def decomposition(seeds, coordinate_dim, revision_len, offset, shift_len = 1):
 def revision(revision_cost_func, reviser, decomposed_seeds, original_subtour, iter=None, embeddings=None):
 
     # tour length of segment TSPs
+    reviser_size = original_subtour.shape[0]
     init_cost = revision_cost_func(decomposed_seeds, original_subtour)
+    
+    # augmentation
+    seed2 = torch.cat((1 - decomposed_seeds[:, :, [0]], decomposed_seeds[:, :, [1]]), dim=2)
+    seed3 = torch.cat((decomposed_seeds[:, :, [0]], 1 - decomposed_seeds[:, :, [1]]), dim=2)
+    seed4 = torch.cat((1 - decomposed_seeds[:, :, [0]], 1 - decomposed_seeds[:, :, [1]]), dim=2)
+    augmented_seeds = torch.cat((decomposed_seeds, seed2, seed3, seed4), dim=0)
 
     if iter is None:
-        cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(decomposed_seeds, return_pi=True)
+        cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(augmented_seeds, return_pi=True)
     elif iter == 0:
-        cost_revised1, sub_tour1, cost_revised2, sub_tour2, embeddings = reviser(decomposed_seeds, return_pi=True, return_embedding=True)
+        cost_revised1, sub_tour1, cost_revised2, sub_tour2, embeddings = reviser(augmented_seeds, return_pi=True, return_embedding=True)
     else:
-        cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(decomposed_seeds, return_pi=True, embeddings=embeddings)
-
-    cost_revised, better_tour_idx = torch.stack((cost_revised1, cost_revised2)).min(dim=0)
-    sub_tour = torch.stack((sub_tour1, sub_tour2))[better_tour_idx, torch.arange(sub_tour1.shape[0])]
+        cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(augmented_seeds, return_pi=True, embeddings=embeddings)
+    
+    cost_revised, better_tour_idx = torch.concat([cost_revised1, cost_revised2], dim=0).reshape(8,-1).min(dim=0)
+    sub_tour = torch.concat([sub_tour1, sub_tour2], dim=0).reshape(8,-1, reviser_size)[better_tour_idx, torch.arange(sub_tour1.shape[0]//4), :]
     reduced_cost = init_cost - cost_revised
-
+    
     sub_tour[reduced_cost < 0] = original_subtour
     decomposed_seeds = decomposed_seeds.gather(1, sub_tour.unsqueeze(-1).expand_as(decomposed_seeds))
     if embeddings is not None:

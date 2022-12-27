@@ -142,28 +142,28 @@ class AttentionModel(nn.Module):
             assert not self.training
         
         # during inference, we make sure x~(0, 1) by coordinate transformation
-        if return_pi:
-            max_x, indices_max_x = input[:,:,0].max(dim=1)
-            max_y, indices_max_y = input[:,:,1].max(dim=1)
-            min_x, indices_min_x = input[:,:,0].min(dim=1)
-            min_y, indices_min_y = input[:,:,1].min(dim=1)
-            # shapes: (batch_size, ); (batch_size, )
+        # if return_pi:
+        #     max_x, indices_max_x = input[:,:,0].max(dim=1)
+        #     max_y, indices_max_y = input[:,:,1].max(dim=1)
+        #     min_x, indices_min_x = input[:,:,0].min(dim=1)
+        #     min_y, indices_min_y = input[:,:,1].min(dim=1)
+        #     # shapes: (batch_size, ); (batch_size, )
             
-            diff_x = max_x - min_x
-            diff_y = max_y - min_y
-            xy_exchanged = diff_y > diff_x
+        #     diff_x = max_x - min_x
+        #     diff_y = max_y - min_y
+        #     xy_exchanged = diff_y > diff_x
 
-            # shift to zero
-            input[:, :, 0] -= (min_x).unsqueeze(-1)
-            input[:, :, 1] -= (min_y).unsqueeze(-1)
+        #     # shift to zero
+        #     input[:, :, 0] -= (min_x).unsqueeze(-1)
+        #     input[:, :, 1] -= (min_y).unsqueeze(-1)
 
-            # exchange coordinates for those diff_y > diff_x
-            input[xy_exchanged, :, 0], input[xy_exchanged, :, 1] =  input[xy_exchanged, :, 1], input[xy_exchanged, :, 0]
+        #     # exchange coordinates for those diff_y > diff_x
+        #     input[xy_exchanged, :, 0], input[xy_exchanged, :, 1] =  input[xy_exchanged, :, 1], input[xy_exchanged, :, 0]
             
-            # scale to (0, 1)
-            scale_degree = torch.max(diff_x, diff_y)
-            scale_degree = scale_degree.view(input.shape[0], 1, 1)
-            input /= scale_degree
+        #     # scale to (0, 1)
+        #     scale_degree = torch.max(diff_x, diff_y)
+        #     scale_degree = scale_degree.view(input.shape[0], 1, 1)
+        #     input /= scale_degree
         
         if self.checkpoint_encoder and self.training:  # Only checkpoint if we need gradients
             embeddings, _ = checkpoint(self.embedder, self._init_embed(input))
@@ -178,11 +178,11 @@ class AttentionModel(nn.Module):
         _log_p, pi, _log_p2, pi2 = self._inner(input, embeddings)
 
         # for inference, inverse coordinate transformation
-        if return_pi:
-            input[xy_exchanged, :, 0], input[xy_exchanged, :, 1] =  input[xy_exchanged, :, 1], input[xy_exchanged, :, 0]
-            input *= scale_degree
-            input[:, :, 0] += (min_x).unsqueeze(-1)
-            input[:, :, 1] += (min_y).unsqueeze(-1)
+        # if return_pi:
+        #     input[xy_exchanged, :, 0], input[xy_exchanged, :, 1] =  input[xy_exchanged, :, 1], input[xy_exchanged, :, 0]
+        #     input *= scale_degree
+        #     input[:, :, 0] += (min_x).unsqueeze(-1)
+        #     input[:, :, 1] += (min_y).unsqueeze(-1)
 
         cost, mask = self.problem.get_costs(input, pi)
         cost2, mask2 = self.problem.get_costs(input, pi2)

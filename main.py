@@ -79,12 +79,15 @@ def _eval_dataset(dataset, opts, device, revisers):
 
     start = time.time()
 
+    if opts.problem_size <= 100:
+        opts.width //= 4
+
     orders = [torch.randperm(opts.problem_size) for i in range(opts.width)]
     
     insertion_start = time.time()
     pi_all = [_solve_insertion((instance, orders[order_id])) for order_id in range(len(orders)) for instance in dataset]
-    pi_all = torch.tensor(np.array(pi_all).astype(np.int64)).reshape(opts.width, opts.val_size, opts.problem_size)
-    print('total insertion time:', time.time()-insertion_start)
+    pi_all = torch.tensor(np.array(pi_all).astype(np.int64)).reshape(len(orders), opts.val_size, opts.problem_size)
+    print('total insertion time:', time.time() - insertion_start)
         
 
     for batch_id, batch in tqdm(enumerate(dataloader), disable=opts.no_progress_bar):
@@ -103,7 +106,16 @@ def _eval_dataset(dataset, opts, device, revisers):
             cost_ori = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
             cost_ori, _ = cost_ori.reshape(-1, opts.eval_batch_size).min(0) # width, bs
             avg_cost = cost_ori.mean().item()
-            print('before revision:', avg_cost)  
+            print('before revision:', avg_cost)
+
+            if opts.problem_size <= 100:
+                seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
+                seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
+                seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
+                seed = torch.cat((seed, seed2, seed3, seed4), dim=0)
+            
+            w = seed.shape[0] // opts.eval_batch_size
+            print(f'Sample width = {w}')
             
             tours, costs_revised = reconnect( 
                                         get_cost_func=get_cost_func,
@@ -146,6 +158,7 @@ if __name__ == "__main__":
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
     parser.add_argument('--width', type=int, default=1, 
                         help='The initial solutions for a TSP instance generated with diversified insertion')
+    parser.add_argument('--no_aug', action='store_true', help='Disable instance augmentation')
     parser.add_argument('--path', type=str, default='', 
                         help='The test dataset path for cross-distribution evaluation')
     opts = parser.parse_args()

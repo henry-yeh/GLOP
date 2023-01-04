@@ -8,9 +8,7 @@ from torch.utils.data import DataLoader
 import time
 from utils.functions import reconnect
 from utils.functions import load_problem
-# from problems.tsp.tsp_baseline import solve_insertion
 import pprint as pp
-# from concurrent.futures import ProcessPoolExecutor
 from utils.insertion import random_insertion
 
 torch.manual_seed(1)
@@ -52,20 +50,12 @@ def eval_dataset(dataset_path, opts):
     print("Total duration: {}".format(duration))
 
 
-def _solve_insertion(args):
+# def _solve_insertion(args):
 
-    instance, order = args
-        
-    # cost, pi, duration = solve_insertion(
-    #                         directory=None, 
-    #                         name=None, 
-    #                         loc=instance,
-    #                         method='random',
-    #                         order=order
-    #                         )
-    route, cost = random_insertion(instance, order)
+#     instance, order = args
+#     route, cost = random_insertion(instance, order)
 
-    return route
+#     return route
 
 def _eval_dataset(dataset, opts, device, revisers):
 
@@ -85,7 +75,7 @@ def _eval_dataset(dataset, opts, device, revisers):
     orders = [torch.randperm(opts.problem_size) for i in range(opts.width)]
     
     insertion_start = time.time()
-    pi_all = [_solve_insertion((instance, orders[order_id])) for order_id in range(len(orders)) for instance in dataset]
+    pi_all = [random_insertion(instance, orders[order_id])[0] for order_id in range(len(orders)) for instance in dataset]
     pi_all = torch.tensor(np.array(pi_all).astype(np.int64)).reshape(len(orders), opts.val_size, opts.problem_size)
     print('total insertion time:', time.time() - insertion_start)
         

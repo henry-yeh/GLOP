@@ -9,6 +9,7 @@ import time
 from utils.functions import revision, reconnect, decomposition, load_problem
 from problems.tsp.tsp_baseline import solve_insertion
 import pprint as pp
+import os
 
 mp = torch.multiprocessing.get_context('spawn')
 
@@ -69,7 +70,7 @@ def generate(opts):
         
         original_subtour = torch.arange(0, opts.revision_lens[0], dtype=torch.long).to(device)
     
-        decomposed_seeds_revised = revision(get_cost_func, reviser, batch, original_subtour)
+        decomposed_seeds_revised, _ = revision(opts, get_cost_func, reviser, batch, original_subtour)
 
         decomposed_seeds, offset_seeds = decomposition(
             decomposed_seeds_revised, 
@@ -105,7 +106,9 @@ if __name__ == "__main__":
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size for data generation')
     opts = parser.parse_args()
-    
+    opts.no_aug = True
+    datadir = 'data/RG_train_tsp'
+    os.makedirs(datadir, exist_ok=True)
     rg_dataset = generate(opts)
     tgt_size = opts.tgt_size
     torch.save(rg_dataset.cpu(), f'./data/RG_train_tsp/RG{tgt_size}.pt')

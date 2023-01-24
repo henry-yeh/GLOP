@@ -237,8 +237,8 @@ def revision(opts, revision_cost_func, reviser, decomposed_seeds, original_subto
         cost_revised1, sub_tour1, cost_revised2, sub_tour2 = reviser(augmented_seeds, return_pi=True, embeddings=embeddings)
     
     if not opts.no_aug:
-        _, better_tour_idx = torch.concat([cost_revised1, cost_revised2], dim=0).reshape(8,-1).min(dim=0)
-        sub_tour = torch.concat([sub_tour1, sub_tour2], dim=0).reshape(8,-1, reviser_size)[better_tour_idx, torch.arange(sub_tour1.shape[0]//4), :]
+        _, better_tour_idx = torch.cat([cost_revised1, cost_revised2], dim=0).reshape(8,-1).min(dim=0)
+        sub_tour = torch.cat([sub_tour1, sub_tour2], dim=0).reshape(8,-1, reviser_size)[better_tour_idx, torch.arange(sub_tour1.shape[0]//4), :]
     else:
         _, better_tour_idx = torch.stack((cost_revised1, cost_revised2)).min(dim=0)
         sub_tour = torch.stack((sub_tour1, sub_tour2))[better_tour_idx, torch.arange(sub_tour1.shape[0])]
@@ -327,6 +327,8 @@ def reconnect(
         duration = time.time() - start_time
 
         print(f'after construction {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
+    
+    seed = seed.reshape(-1, opts.eval_batch_size, seed.shape[-2], 2)[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
 
     return seed, cost_revised
 

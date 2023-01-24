@@ -1,6 +1,7 @@
 import math
 import torch
 import argparse
+import warnings
 import numpy as np
 from tqdm import tqdm
 from utils import load_model
@@ -11,7 +12,6 @@ from utils.functions import load_problem
 import pprint as pp
 from utils.insertion import random_insertion
 
-torch.manual_seed(1)
 
 def eval_dataset(dataset_path, opts):
     pp.pprint(vars(opts))
@@ -48,14 +48,8 @@ def eval_dataset(dataset_path, opts):
     print("Average cost: {} +- {}".format(costs.mean(), (2 * torch.std(costs) / math.sqrt(len(costs))).item()))
     print("Average cost_revised: {} +- {}".format(costs_revised.mean().item(), (2 * torch.std(costs_revised) / math.sqrt(len(costs_revised))).item()))
     print("Total duration: {}".format(duration))
-
-
-# def _solve_insertion(args):
-
-#     instance, order = args
-#     route, cost = random_insertion(instance, order)
-
-#     return route
+    
+    return tours
 
 def _eval_dataset(dataset, opts, device, revisers):
 
@@ -70,7 +64,11 @@ def _eval_dataset(dataset, opts, device, revisers):
     start = time.time()
 
     if opts.problem_size <= 100:
-        opts.width //= 4
+        if opts.width >= 4:
+            opts.width //= 4
+            opts.tsp_aug = True
+        else:
+            opts.tsp_aug = False
 
     orders = [torch.randperm(opts.problem_size) for i in range(opts.width)]
     
@@ -98,7 +96,7 @@ def _eval_dataset(dataset, opts, device, revisers):
             avg_cost = cost_ori.mean().item()
             print('before revision:', avg_cost)
 
-            if opts.problem_size <= 100:
+            if opts.problem_size <= 100 and opts.tsp_aug:
                 seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
                 seed3 = torch.cat((seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
                 seed4 = torch.cat((1 - seed[:, :, [0]], 1 - seed[:, :, [1]]), dim=2)
@@ -151,11 +149,15 @@ if __name__ == "__main__":
     parser.add_argument('--no_aug', action='store_true', help='Disable instance augmentation')
     parser.add_argument('--path', type=str, default='', 
                         help='The test dataset path for cross-distribution evaluation')
+    parser.add_argument('--seed', type=int, default=1, help='Random seed')
+    
     opts = parser.parse_args()
 
     if opts.path == '':
         dataset_path = f'data/tsp/tsp{opts.problem_size}_test.pkl'
     else:
         dataset_path = opts.path
+        
+    torch.manual_seed(opts.seed)
     
-    eval_dataset(dataset_path, opts)
+    tours = eval_dataset(dataset_path, opts)

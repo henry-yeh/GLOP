@@ -115,3 +115,10 @@ python generate_data_RG.py --load_path pretrained/Reviser-stage2/reviser_20/epoc
 # To fine-tune Reviser-10:
 python run.py --data_distribution scale --RI_train --graph_size 10 --lr_decay 0.99 --RI_path data/RG_train_tsp/RG10.pt --load_path pretrained/Reviser-stage1/reviser_10/epoch-99.pt --n_epochs 300 --checkpoint_epochs 100
 ```
+
+## Acknowledgements
+
+* https://github.com/wouterkool/attention-learn-to-route
+* https://github.com/alstn12088/LCP
+* https://github.com/Spider-scnu/TSP
+* https://github.com/jieyibi/AMDKD

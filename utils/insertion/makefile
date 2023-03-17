@@ -20,7 +20,8 @@ insertion.so: $(targets)
 clean:
 	rm -f src/*.o src/*.d *.o *.d *.so
 
-test: insertion.so
+testtsp: insertion.so
 	python3 -c "import insertion, numpy as np;order=np.arange(0,1000,dtype=np.uint32);print(insertion.random(np.random.rand(1000,2).astype(np.float32),order))" 
-	
 
+testcvrp: insertion.so
+	python3 ./__init__.py

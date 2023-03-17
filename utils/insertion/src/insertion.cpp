@@ -17,7 +17,6 @@ insertion_random(PyObject *self, PyObject *args)
     /* ----------------- read cities' position from PyObject ----------------- */
     PyObject *pycities;
     PyObject *pyorder;
-    bool converted = false;
     if (!PyArg_ParseTuple(args, "OO", &pycities, &pyorder))
         return NULL;
     if (!PyArray_Check(pycities) || !PyArray_Check(pyorder))
@@ -50,9 +49,55 @@ insertion_random(PyObject *self, PyObject *args)
     return returntuple;
 }
 
+static PyObject *
+cvrp_insertion_random(PyObject *self, PyObject *args)
+{
+    /* ----------------- read cities' position from PyObject ----------------- */
+    PyObject *pycities, *pyorder, *pydemands;
+    float depotx, depoty, exploration;
+    unsigned capacity;
+    // positions depotx depoty demands capacity order
+    if (!PyArg_ParseTuple(args, "OffOIOf", &pycities, &depotx, &depoty, &pydemands, &capacity, &pyorder, &exploration))
+        return NULL;
+    if (!PyArray_Check(pycities) || !PyArray_Check(pyorder) || !PyArray_Check(pydemands))
+        return NULL;
+    if (PyArray_NDIM(pycities) != 2 || PyArray_NDIM(pyorder) != 1 || PyArray_NDIM(pydemands) != 1)
+        return NULL;
+    if (PyArray_TYPE(pycities) != NPY_FLOAT32 || PyArray_TYPE(pyorder) != NPY_UINT32 || PyArray_TYPE(pydemands) != NPY_UINT32 )
+        return NULL;
+
+    // std::printf("running\n");
+
+    PyArrayObject *pyarrcities = (PyArrayObject *)pycities;
+    PyArrayObject *pyarrorder = (PyArrayObject *)pyorder;
+    PyArrayObject *pyarrdemands = (PyArrayObject *)pydemands;
+    npy_intp *shape = PyArray_SHAPE(pyarrcities);
+    unsigned citycount = (unsigned)shape[0];
+    float *cities = (float *)PyArray_DATA(pyarrcities);
+    unsigned *order = (unsigned *)PyArray_DATA(pyarrorder);
+    unsigned *demands = (unsigned *)PyArray_DATA(pyarrdemands);
+    float depotpos[2] = {depotx, depoty};
+
+    /* ---------------------------- random insertion ---------------------------- */
+    CVRPInstance cvrpi = CVRPInstance(citycount, cities, demands, depotpos, capacity);
+    CVRPInsertion ins = CVRPInsertion(&cvrpi);
+
+    // std::printf("insertion\n");
+    CVRPReturn *result = ins.randomInsertion(order, exploration);
+    // std::printf("insertion finished\n");
+    /* ----------------------- convert output to PyObject ----------------------- */
+    npy_intp dims = citycount, dims2 = result->routes;
+    PyObject *returntuple = PyTuple_Pack(2, 
+        PyArray_SimpleNewFromData(1, &dims, NPY_UINT32, result->order),
+        PyArray_SimpleNewFromData(1, &dims2, NPY_UINT32, result->routesep)
+    );
+
+    return returntuple;
+}
+
 static PyMethodDef InsertionMethods[] = {
-    {"random", insertion_random, METH_VARARGS,
-     "Execute random insertion."},
+    {"random", insertion_random, METH_VARARGS, "Execute random insertion."},
+    {"cvrp_random", cvrp_insertion_random, METH_VARARGS, "Execute random insertion for CVRP."},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef insertionmodule = {

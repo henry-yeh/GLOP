@@ -47,24 +47,23 @@ CVRPReturn* CVRPInsertion::randomInsertion(unsigned *order, float exploration = 
 		Node *curr;
 		{
 			curr = vacant;
-			if (vacant != nullptr)
-				vacant = vacant->next, curr->next = nullptr;
+			vacant = vacant->next, curr->next = nullptr;
 		}
 		unsigned currcity = curr -> value;
 		float depotdist = cvrpi->getdistance(currcity, depot);
 		float mincost = 2.0 * depotdist * exploration;
+		unsigned currdemand = cvrpi->demand[currcity];
 		Route* minroute = nullptr;
 		Node* minnode = nullptr;
 		// std::printf("find insert position for city %i\n", currcity);
 		// get insert posiion with minimum cost
 		for(std::vector<Route*>::iterator j = routes.begin(); j<routes.end(); ++j){
 			Route* route = *j;
-			if((route->demand) + (cvrpi->demand[currcity]) > capacity)
+			if(route->demand + currdemand > capacity)
 				continue;
 			Node *headnode = route->head;
 			Node *thisnode = headnode, *nextnode = headnode->next;
 			float thisdist = mincost/2, nextdist = 0;
-			minnode = thisnode;
 			do{
 				nextnode = thisnode->next;
 				nextdist = cvrpi->getdistance(nextnode->value, currcity);
@@ -81,17 +80,17 @@ CVRPReturn* CVRPInsertion::randomInsertion(unsigned *order, float exploration = 
 		if(minroute == nullptr){
 			route = newroute(depot);
 			pre = route -> head;
-			pre->length = curr->length = depotdist;
+			pre->next->length = curr->length = depotdist;
 			routes.push_back(route);
 			mincost = depotdist * 2.0;
 		}else{
 			pre = minnode, route = minroute;
-			pre->length = cvrpi->getdistance(pre->value, currcity);
+			curr->length = cvrpi->getdistance(pre->value, currcity);
 			pre->next->length = cvrpi->getdistance(currcity, pre->next->value);
 		}
 		Node* next = pre->next;
 		pre->next = curr, curr->next = next;
-		route->demand += cvrpi->demand[currcity];
+		route->demand += currdemand;
 		route->length += mincost;
 	}
 	// std::printf("outputing\n");

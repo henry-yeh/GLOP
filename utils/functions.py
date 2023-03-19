@@ -304,7 +304,6 @@ def reconnect(
         opts, 
         revisers,
     ):
-
     seed = batch
 
     for revision_id in range(len(revisers)):
@@ -323,12 +322,12 @@ def reconnect(
             )
         
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-        cost_revised, cost_revised_minidx = cost_revised.reshape(-1, opts.eval_batch_size).min(0) # width, bs
+        if opts.problem_type != 'cvrp':
+            cost_revised, cost_revised_minidx = cost_revised.reshape(-1, opts.eval_batch_size).min(0) # width, bs
+            seed = seed.reshape(-1, opts.eval_batch_size, seed.shape[-2], 2)[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
         duration = time.time() - start_time
 
-        print(f'after construction {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
-    
-    seed = seed.reshape(-1, opts.eval_batch_size, seed.shape[-2], 2)[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
+        # print(f'after construction {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
 
     return seed, cost_revised
 

@@ -16,12 +16,16 @@
 
 ### Resources
 
-To test LoPo, one can download test datasets from [TSP-test-datasets-downloading-link](https://drive.google.com/file/d/1KfCuASdp5N1OH7m41zZ0j2D_zvLjhB2O/view?usp=share_link) and place the test datasets in `./data/tsp`.
+- Download reviser checkpoints from [reviser-checkpoints-downloading-link](https://drive.google.com/file/d/1a5XthsAPr29bl-U5hD5rGk2Oqll2OqNq/view?usp=share_link) and place the checkpoints in `./pretrained/Reviser-stage2`.
+
+- Download test datasets from [TSP-test-datasets-downloading-link](https://drive.google.com/file/d/1KfCuASdp5N1OH7m41zZ0j2D_zvLjhB2O/view?usp=share_link) and place the test datasets in `./data/tsp`.
+
+- Download test datasets from [CVRP-test-datasets-downloading-link](https://drive.google.com/file/d/1yni24PcZJzOc8RKE4ZAhrPad7j7aZzJb/view?usp=sharing) and place the test datasets in `./data/vrp`.
+
+- Download test datasets from [PCTSP-test-datasets-downloading-link](https://drive.google.com/file/d/1xkxDgr5xOoTm7bZEIWo3vOOIyoyx5naO/view?usp=sharing) and place the test datasets in `./data/pctsp`.
 
 
-Download reviser checkpoints from [reviser-checkpoints-downloading-link](https://drive.google.com/file/d/1a5XthsAPr29bl-U5hD5rGk2Oqll2OqNq/view?usp=share_link) and place the checkpoints in `./pretrained/Reviser-stage2`.
-
-### Evaluation with reviser checkpoints
+### Evaluation on TSP
 
 ```bash
 # To reproduce the best result on 10k TSP20: 
@@ -64,6 +68,37 @@ To reduce the inference duration, try:
 --no_aug
 ```
 
+### Evaluation on CVRP
+
+```bash
+# To reproduce the results on CVRP1K: 
+python main.py --problem_type cvrp  --problem_size 1000 --val_size 100 --revision_lens  20 10 --revision_iters 10 5
+
+# To reproduce the results on CVRP2K: 
+python main.py --problem_type cvrp  --problem_size 2000 --val_size 100 --revision_lens 50 20 --revision_iters 15 5
+
+# To reproduce the results on CVRP5K:
+python main.py --problem_type cvrp  --problem_size 5000 --val_size 100 --revision_lens 50 20 --revision_iters 15 5
+
+# To reproduce the results on CVRP7K:
+python main.py --problem_type cvrp  --problem_size 7000 --val_size 100 --revision_lens 50 20 --revision_iters 15 5
+
+# To reproduce the results on CVRP100K:
+python main.py --problem_type cvrp  --problem_size 100000 --val_size 1 --revision_lens 100 50 20 --revision_iters 10 15 5
+```
+
+### Evaluation on PCTSP
+
+```bash
+# To reproduce the results on PCTSP500: 
+python main.py --problem_type pctsp --problem_size 500 --width 1 --n_subset 10 --eval_batch_size 64 --val_size 128
+
+# To reproduce the results on PCTSP1K: 
+python main.py --problem_type pctsp --problem_size 1000 --width 1 --n_subset 10 --eval_batch_size 32 --val_size 128
+
+# To reproduce the results on PCTSP10K:
+python main.py --problem_type pctsp --problem_size 10000 --width 1 --n_subset 10 --eval_batch_size 2 --val_size 16
+```
 
 ### Generating data (Stage 1)
 

@@ -76,9 +76,9 @@ def cvrplib_random_insertion(positions, demands, capacity, order = None, explora
 
 
 if __name__=="__main__":
-    n = 100
+    n = 1000
     pos = np.random.rand(n, 2)
     depotpos = pos.mean(axis=0)
     demands = np.random.randint(1, 7, size = n)
-    capacity = 30
+    capacity = 300
     print(*cvrp_random_insertion(pos, depotpos, demands, capacity), sep='\n')

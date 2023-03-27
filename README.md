@@ -4,13 +4,18 @@
 
 ## Dependencies
 
-* Python>=3.8
-* NumPy==1.23
-* SciPy
-* [PyTorch](http://pytorch.org/)>=1.1
-* tqdm
-* [tensorboard_logger](https://github.com/TeamHG-Memex/tensorboard_logger)
-* Matplotlib
+- Python>=3.8
+- NumPy==1.23
+- CUDA 11.0
+- PyTorch 1.7.0
+- [PyTorch Scatter](https://github.com/rusty1s/pytorch_scatter) 2.0.7
+- [PyTorch Sparse](https://github.com/rusty1s/pytorch_sparse) 0.6.9
+- [PyTorch Geometric](https://github.com/pyg-team/pytorch_geometric) 2.0.4
+- SciPy
+- tqdm
+- [tensorboard_logger](https://github.com/TeamHG-Memex/tensorboard_logger)
+- Matplotlib
+
 
 ## How to Use
 

@@ -44,6 +44,29 @@ class Sampler():
             return torch.stack(solutions).permute(1, 0), torch.stack(log_probs_list).permute(1, 0)  # shape: [bs, max_seq_len]
         else:
             return torch.stack(solutions).permute(1, 0)
+
+    def gen_penalty_bool(self, sol, n):
+        '''
+        Args:
+            sol: (width, max_seq_len)
+        '''
+        width = sol.size(0)
+        seq_len = sol.size(1)
+        expanded_nodes = torch.arange(n, device=self.device).repeat(width, seq_len, 1) # (width, seq_len, n)
+        expanded_sol = torch.repeat_interleave(sol, n, dim=-1).reshape(width, seq_len, n)
+        return (torch.eq(expanded_nodes, expanded_sol)==0).all(dim=1)
+    
+    def gen_penalty(self, solutions, node_penalty):
+        '''
+        Args:
+            solutions: (width, max_len)
+        '''
+        penalty_bool = self.gen_penalty_bool(solutions, self.n)
+        sols_penalty = []
+        for idx in range(solutions.size(0)):
+            penalty = node_penalty[penalty_bool[idx]].sum()
+            sols_penalty.append(penalty)
+        return torch.stack(sols_penalty)
     
     def pick_node(self, visit_mask, depot_mask, cur_node, require_prob):
         heatmap = self.heatmap[cur_node] 

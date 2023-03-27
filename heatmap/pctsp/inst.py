@@ -28,7 +28,7 @@ def gen_inst(n, device):
     dist_mat = gen_distance_matrix(coor)
     prizes = gen_prizes(n, device)
     penalties = gen_penalties(n, device)
-    return dist_mat, prizes, penalties
+    return coor, dist_mat, prizes, penalties
 
 def gen_pyg_data(prizes, penalties, dist_mat, k_sparse):
     n_nodes = prizes.size(0)
@@ -54,18 +54,4 @@ def load_val_dataset(n_node, device):
     return test_list
 
 if __name__ == "__main__":
-    torch.manual_seed(123456)
-    n_test = {
-        20: 100,
-        500: 30,
-        1000: 30,
-        10000: 5
-    }
-    import pathlib
-    pathlib.Path('./heatmap/data/pctsp').mkdir(parents=False, exist_ok=True) 
-    for n in [500, 1000, 10000]:
-        valDataset = []
-        for _ in range(n_test[n]):
-            dist_mat, prizes, penalties = gen_inst(n, 'cpu')
-            valDataset.append(torch.cat([dist_mat, prizes.unsqueeze(0), penalties.unsqueeze(0)], dim=0))
-        torch.save(torch.stack(valDataset), f"data/pctsp/valDataset-{n}.pt")
+    pass

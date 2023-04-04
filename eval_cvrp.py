@@ -5,7 +5,7 @@ import pprint as pp
 
 from problems.cvrp import init  
 from heatmap.cvrp.inst import sum_cost
-from lkh import lkh_solve
+from utils.lkh import lkh_solve
 
 
 def cvrp_lkh_eval(path, opts):

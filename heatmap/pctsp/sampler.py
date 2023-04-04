@@ -1,7 +1,5 @@
 import torch
 from torch.distributions import Categorical
-import numpy as np
-from copy import deepcopy
 
 class Sampler():
     '''
@@ -11,12 +9,14 @@ class Sampler():
         self.n = prizes.size(0)
         self.prizes = prizes
         self.heatmap = heatmap
-        self.min_prizes = self.n / 4
+        self.min_prizes = 1
         self.bs = bs
         self.ants_idx = torch.arange(bs)
         self.device = device
     
-    def gen_subsets(self, require_prob=False):
+    def gen_subsets(self, require_prob=False, greedy_mode=False):
+        if greedy_mode:
+            assert not require_prob
         solutions = []
         log_probs_list = []
         cur_node = torch.zeros(size=(self.bs,), dtype=torch.int64, device=self.device)
@@ -28,7 +28,7 @@ class Sampler():
         done = False
         # construction
         while not done:
-            cur_node, log_prob = self.pick_node(visit_mask, depot_mask, cur_node, require_prob) # pick action
+            cur_node, log_prob = self.pick_node(visit_mask, depot_mask, cur_node, require_prob, greedy_mode) # pick action
             # update solution and log_probs
             solutions.append(cur_node) 
             log_probs_list.append(log_prob)
@@ -68,12 +68,16 @@ class Sampler():
             sols_penalty.append(penalty)
         return torch.stack(sols_penalty)
     
-    def pick_node(self, visit_mask, depot_mask, cur_node, require_prob):
+    def pick_node(self, visit_mask, depot_mask, cur_node, require_prob, greedy_mode=False):
+        log_prob = None
         heatmap = self.heatmap[cur_node] 
         dist = (heatmap * visit_mask * depot_mask)
-        dist = Categorical(dist)
-        item = dist.sample()
-        log_prob = dist.log_prob(item) if require_prob else None
+        if not greedy_mode:
+            dist = Categorical(dist)
+            item = dist.sample()
+            log_prob = dist.log_prob(item) if require_prob else None
+        else:
+            item, _ = dist.max(dim=1)
         return item, log_prob  # (bs,)
     
     def update_mask(self, visit_mask, depot_mask, cur_node, collected_prize):
@@ -92,12 +96,4 @@ class Sampler():
 
     def check_done(self, cur_node):
         # is all at depot ?
-        return (cur_node == 0).all()        
-
-if __name__ == '__main__':
-    torch.set_printoptions(precision=4,sci_mode=False)
-    sampler = Sampler(prizes=torch.rand((10, )), heatmap=torch.ones((10, 10)))
-    sols, probs = sampler.gen_subsets(require_prob=1)
-    print(sols)
-    
-    
+        return (cur_node == 0).all()

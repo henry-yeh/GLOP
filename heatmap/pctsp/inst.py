@@ -3,14 +3,16 @@ from torch_geometric.data import Data
 
 K_n = {
     20: 2,
+    50: 3,
     100: 4,
     500: 9,
     1000: 12,
+    5000: 20,
     10000: 38
 }
 
 def gen_prizes(n, device):
-    prizes = torch.rand(size=(n,), device=device)
+    prizes = torch.rand(size=(n,), device=device) * 4 / n
     return torch.cat((torch.tensor([0.], device=device), prizes))
 
 def gen_penalties(n, device):
@@ -44,14 +46,3 @@ def gen_pyg_data(prizes, penalties, dist_mat, k_sparse):
     x = torch.stack((prizes, penalties)).permute(1, 0) # (n+1, 2)
     pyg_data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
     return pyg_data
-
-def load_val_dataset(n_node, device):
-    test_list = []
-    dataset = torch.load(f'./data/pctsp/testDataset-{n_node}.pt', map_location=device)
-    for inst in dataset:
-        dist_mat, prizes, penalties = inst[:-2], inst[-2], inst[-1]
-        test_list.append((dist_mat, prizes, penalties))
-    return test_list
-
-if __name__ == "__main__":
-    pass

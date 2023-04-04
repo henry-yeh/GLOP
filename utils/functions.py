@@ -1,5 +1,4 @@
 import warnings
-
 import torch
 import numpy as np
 import os
@@ -135,7 +134,8 @@ def run_all_in_pool(func, directory, dataset, opts, use_multiprocessing=True):
     # res = func((directory, 'test', *dataset[0]))
     # return [res]
 
-    num_cpus = os.cpu_count() if opts.cpus is None else opts.cpus
+    assert opts.cpus is not None
+    num_cpus = opts.cpus
 
     w = len(str(len(dataset) - 1))
     offset = getattr(opts, 'offset', None)
@@ -209,7 +209,7 @@ def coordinate_transformation(x):
     # scale to (0, 1)
     scale_degree = torch.max(diff_x, diff_y)
     scale_degree = scale_degree.view(input.shape[0], 1, 1)
-    input /= scale_degree
+    input /= scale_degree + 1e-10
     return input
 
 def revision(opts, revision_cost_func, reviser, decomposed_seeds, original_subtour, iter=None, embeddings=None):
@@ -305,8 +305,11 @@ def reconnect(
         revisers,
     ):
     seed = batch
-
+    if len(revisers) == 0:
+        cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
+    
     for revision_id in range(len(revisers)):
+        assert opts.revision_lens[revision_id] <= seed.size(1)
         start_time = time.time()
 
         shift_len = max(opts.revision_lens[revision_id]//opts.revision_iters[revision_id], 1)
@@ -322,9 +325,14 @@ def reconnect(
             )
         
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-        if opts.problem_type != 'cvrp':
+        
+        if opts.problem_type == 'pctsp':
+            assert cost_revised.size(0) == seed.size(0) == opts.eval_batch_size
+            
+        elif opts.problem_type == 'tsp':
             cost_revised, cost_revised_minidx = cost_revised.reshape(-1, opts.eval_batch_size).min(0) # width, bs
             seed = seed.reshape(-1, opts.eval_batch_size, seed.shape[-2], 2)[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
+        
         duration = time.time() - start_time
 
         # print(f'after construction {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')

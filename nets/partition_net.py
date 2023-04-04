@@ -6,7 +6,7 @@ import torch_geometric.nn as gnn
 
 # GNN for edge embeddings
 class EmbNet(nn.Module):
-    def __init__(self, depth=12, feats=2, units=32, act_fn='silu', agg_fn='mean'): # TODO feats=1
+    def __init__(self, depth=12, feats=2, edge_feats=1, units=48, act_fn='silu', agg_fn='mean'): # TODO feats=1
         super().__init__()
         self.depth = depth
         self.feats = feats
@@ -19,7 +19,7 @@ class EmbNet(nn.Module):
         self.v_lins3 = nn.ModuleList([nn.Linear(self.units, self.units) for i in range(self.depth)])
         self.v_lins4 = nn.ModuleList([nn.Linear(self.units, self.units) for i in range(self.depth)])
         self.v_bns = nn.ModuleList([gnn.BatchNorm(self.units) for i in range(self.depth)])
-        self.e_lin0 = nn.Linear(1, self.units)
+        self.e_lin0 = nn.Linear(edge_feats, self.units)
         self.e_lins0 = nn.ModuleList([nn.Linear(self.units, self.units) for i in range(self.depth)])
         self.e_bns = nn.ModuleList([gnn.BatchNorm(self.units) for i in range(self.depth)])
     def reset_parameters(self):
@@ -69,7 +69,7 @@ class MLP(nn.Module):
 
 # MLP for predicting parameterization theta
 class ParNet(MLP):
-    def __init__(self, k_sparse, depth=3, units=32, preds=1, act_fn='silu'):
+    def __init__(self, k_sparse, depth=3, units=48, preds=1, act_fn='silu'):
         self.units = units
         self.preds = preds
         self.k_sparse = k_sparse
@@ -79,10 +79,10 @@ class ParNet(MLP):
     
 
 class Net(nn.Module):
-    def __init__(self, feats, k_sparse):
+    def __init__(self, units, feats, k_sparse, edge_feats=1):
         super().__init__()
-        self.emb_net = EmbNet(feats=feats)
-        self.par_net_heu = ParNet(k_sparse=k_sparse)
+        self.emb_net = EmbNet(units=units, feats=feats, edge_feats=edge_feats)
+        self.par_net_heu = ParNet(units=units, k_sparse=k_sparse)
         
     def forward(self, pyg):
         '''
@@ -104,5 +104,9 @@ class Net(nn.Module):
         device = pyg.x.device
         matrix = torch.zeros(size=(n_nodes, n_nodes), device=device)
         matrix[pyg.edge_index[0], pyg.edge_index[1]] = vector
+        try:
+            assert (matrix.sum(dim=1) >= 0.99).all()
+        except:
+            torch.save(matrix, './error_reshape.pt')
         return matrix
         

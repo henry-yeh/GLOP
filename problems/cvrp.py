@@ -1,86 +1,49 @@
-import numpy as np
-import torch
+import sys
+sys.path.insert(0, './')
 import pickle
-
-CAPACITIES = {
-    10: 20.,
-    20: 30.,
-    50: 40.,
-    100: 50.,
-    1000: 200,
-    2000: 300,
-    5000: 300,
-    7000: 300,
-    100000: 1000,
-    
-}
-
-def load_dataset(path):
+import torch
+from heatmap.cvrp.infer import infer, load_partitioner
+from heatmap.cvrp.sampler import Sampler
+from heatmap.cvrp.inst import trans_tsp
+  
+def load_dataset(path='./data/pctsp/pctsp500_test_seed1234.pkl'):
     with open(path, 'rb') as f:
         data = pickle.load(f)
     return data
+    
+def concat_list(depot_coor, coors, demand, opts):
+    coor =  torch.cat([torch.tensor(depot_coor, device=opts.device).unsqueeze(0), 
+                    torch.tensor(coors, device=opts.device)], dim=0) # 1+p_size, 2 
+    demand = torch.cat([torch.zeros((1), device=opts.device), 
+                            torch.tensor(demand, device=opts.device)]) # 1+p_size
+    return coor, demand
 
-def disturb_dummy_coor(pi_batch, seeds):
-    '''
-    Args:
-        pi_batch: (x, p_size)
-        seeds: (x, p_size, 2)
-    '''
-    zeroIndices = torch.nonzero(pi_batch.eq(0))
-    seeds[zeroIndices[:, 0], zeroIndices[:, 1]] += 1e-6*((torch.rand((zeroIndices.size(0), 2), device=seeds.device))+0.1)
-    return seeds
-
-def preprocess_inst(inst, pos):
-    '''
-    Args: 
-        inst: n_subtours: var_size, inst_wise_max_subtour_len)
-        pos: p_size+1, 2
-    return: (sum_n_subtours for all width, inst_wise_max_subtour_len, 2)
-    '''
-    pos = torch.tensor(pos, dtype=torch.float32)
-    pi_inst = torch.tensor(inst, dtype=torch.long) # (n_subtours, max_subtour_len)
-    seeds = pos[pi_inst] # (sum_n_subtours, max_subtour_len, 2)
-    seeds = disturb_dummy_coor(pi_inst, seeds)
-    return seeds
-
-def check_feasibility(pi_all, inst_list):
-    for i in range(len(inst_list)):
-        pi = pi_all[i]
-        inst = inst_list[i]
-        for sb_id, subtour in enumerate(pi):
-            sd = 0
-            for node in subtour:
-                assert 1 <= inst[1][node] <= 10
-                sd += inst[1][node]
-            assert sd <= CAPACITIES[len(inst_list[0][0])-1]
-
-def init(opts, insertion, inst_list=None):
-    if inst_list is None:
-        inst_list = load_dataset(opts.path)[:opts.val_size]
-    pi_all = [insertion(*instance, None) for instance in inst_list]  # (n_dataset, n_subtours: var_len, n_nodes: var_len)
-    # check_feasibility(pi_all, inst_list)
-    subtours_array_list = []
-    # inst-wise padding here
-    for inst_id in range(len(inst_list)):
-        pi_inst = pi_all[inst_id] # a list of of var-len np.arrays
-        max_seq_len = max([len(pi_inst[j]) for j in range(len(pi_inst))])
-        # append to max_seq_len and transform into TSP tensors
-        subtours_list = []
-        for subtour in pi_inst:
-            subtour = np.append(subtour.astype(np.int64), np.zeros(shape=(max_seq_len+1-len(subtour),)))
-            subtours_list.append(subtour)
-        subtours_array = np.stack(subtours_list)
-        subtours_array_list.append(subtours_array)
-    # subtours_array_list: (n_dataset, n_subtours: var_len, n_nodes: var_len)
-    seeds_tensor_list = []
-    for inst_id, inst in enumerate(subtours_array_list):
-        inst_node_coor = inst_list[inst_id][0]
-        inst = preprocess_inst(inst, inst_node_coor) # tensor (n_subtours, inst_wise_max_subtour_len, 2)
-        seeds_tensor_list.append(inst)
-    return seeds_tensor_list
+def add_padding(pi_all, max_seq_len, opts):
+    ret = []
+    for subset_pi in pi_all:
+        assert subset_pi.size(0) == opts.n_subset
+        diff = max_seq_len - subset_pi.size(-1)
+        subset_pi = torch.cat([subset_pi, torch.zeros((opts.n_subset, diff), dtype=torch.int64 ,device=subset_pi.device)], dim=1)
+        ret.append(subset_pi)
+    ret = torch.cat(ret, dim=0) # n_val*n_subset, max_len
+    assert ret.shape == (opts.val_size * opts.n_subset, max_seq_len)
+    return ret
         
-
-if __name__ == '__main__':
-    dataset = load_dataset('data/vrp/vrp1000_test_seed1234.pkl')
-    print(dataset)
-        
+def init(path, opts):
+    data = load_dataset(path)
+    greedy_mode = True if opts.n_partition == 1 else False
+    partitioner = load_partitioner(opts.problem_size, opts.device, opts.ckpt_path)
+    dataset = []
+    n_tsps_per_route_lst = []
+    for inst_id, inst in enumerate(data[:opts.val_size]):
+        depot_coor, coors, demand, capacity = inst
+        coors, demand = concat_list(depot_coor, coors, demand, opts)
+        heatmap = infer(partitioner, coors, demand, capacity)
+        sampler = Sampler(demand, heatmap, capacity, opts.n_partition, 'cpu')
+        routes = sampler.gen_subsets(require_prob=False, greedy_mode=greedy_mode) # n_partition, max_len
+        assert routes.size(0) == opts.n_partition
+        tsp_insts, n_tsps_per_route = trans_tsp(coors.cpu(), routes)
+        assert tsp_insts.size(0) == sum(n_tsps_per_route)
+        dataset.append(tsp_insts)
+        n_tsps_per_route_lst.append(n_tsps_per_route)
+    return dataset, n_tsps_per_route_lst

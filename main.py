@@ -13,7 +13,6 @@ import pprint as pp
 from utils.insertion import random_insertion
 
 
-
 def eval_dataset(dataset_path, opts):
     pp.pprint(vars(opts))
     
@@ -148,9 +147,6 @@ def _eval_dataset(dataset_path, opts, device, revisers):
             tours = tours[subtour_start: subtour_start+n_tsps_per_route[best_partition_idx]]
             assert tours.shape == (n_tsps_per_route[best_partition_idx], max_seq_len, 2)
             tours = tours.reshape(-1, 2)
-        else:
-            raise NotImplementedError
-        
         
         if opts.problem_type == 'pctsp':
             results.append((avg_cost, costs_revised, costs_revised_with_penalty, tours))

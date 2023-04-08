@@ -15,8 +15,6 @@ LR = 3e-4
 K_SPARSE = {
     1000: 100,
     2000: 200,
-    5000: 200,
-    7000: 200
 }
 
 def infer_heatmap(model, pyg_data):

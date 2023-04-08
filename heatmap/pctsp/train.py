@@ -10,18 +10,14 @@ from sampler import Sampler
 from utils import load_model
 
 EPS = 1e-10
-DEVICE = 'cuda:1'
+DEVICE = 'cuda:0'
 LR = 1e-4
 N_VAL = 100
 
 k_sparse_table = {
-    20: 5,
-    50: 20,
-    100: 20,
     500: 50,
     1000: 100,
     5000: 200,
-    10000: 500
 }
 
 def train_instance(model, optimizer, n, bs, opts):

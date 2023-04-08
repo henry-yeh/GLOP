@@ -30,28 +30,19 @@ Our datasets are mostly generated using the code of [*Attention, Learn to Solve 
 
 #### For TSP
 ```bash
-# To reproduce the best result on 10k TSP20: 
-python main.py --eval_batch_size 1000  --val_size 10000 --problem_size 20 --revision_lens 20 10 --revision_iters 10 5 --width 80 --decode_strategy sampling --no_aug
-
-# To reproduce the best result on 10k TSP50: 
-python main.py --eval_batch_size 500  --val_size 10000 --problem_size 50 --revision_lens 50 20 --revision_iters 30 10 --width 80 --decode_strategy sampling --no_aug
-
-# To reproduce the best result on 10k TSP100: 
-python main.py --problem_size 100 --revision_lens 100 50 20 10 --revision_iters 20 10 10 5 --width 80 --eval_batch_size 200 --val_size 10000 --decode_strategy sampling --no_aug
-
-# To reproduce the best result on 128 TSP200: 
+# For TSP200: 
 python main.py --problem_size 200 --revision_iters 20 25 5 --revision_lens 100 50 20 --width 10 --eval_batch_size 128 --val_size 128 --decode_strategy greedy
 
-# To reproduce the best result on 128 TSP500:
+# For TSP500:
 python main.py --problem_size 500 --revision_iters 20 25 5 --revision_lens 100 50 20 --width 10 --eval_batch_size 64 --val_size 128 --decode_strategy greedy
 
-# To reproduce the best result on 128 TSP1000:
+# For TSP1000:
 python main.py --problem_size 1000 --revision_iters 20 25 5 --revision_lens 100 50 20 --width 10 --eval_batch_size 32 --val_size 128 --decode_strategy greedy
 
-# To reproduce the best result on 16 TSP10k:
+# For TSP10k:
 python main.py --problem_size 10000 --revision_iters 50 25 5 --revision_lens 100 50 20 --width 10 --eval_batch_size 4 --val_size 16 --decode_strategy greedy
 
-# To reproduce the best result on 1 TSP100k:
+# For TSP100k:
 python main.py --problem_size 100000 --revision_iters 50 25 5 --revision_lens 100 50 20 --width 1 --eval_batch_size 1 --val_size 1 --decode_strategy greedy
 
 # To conduct cross-distribution evaluation, e.g.:
@@ -74,25 +65,25 @@ To reduce the inference duration, try:
 
 ```bash
 # For CVRP1K using LKH-3 as sub-solver: 
-python eval_cvrp.py --cpus 16 --problem_size 1000
+python eval_cvrp.py --cpus 12 --problem_size 1000
 
 # For CVRP1K using neural sub-TSP solver
 python main.py --problem_type cvrp --problem_size 1000 --revision_lens 20 --revision_iters 5
 
 # For CVRP2K using LKH-3 as sub-solver: 
-python eval_cvrp.py --cpus 16 --problem_size 2000
+python eval_cvrp.py --cpus 12 --problem_size 2000
 
 # For CVRP2K using neural sub-TSP solver
 python main.py --problem_type cvrp --problem_size 2000 --revision_lens 50 20 --revision_iters 3 2
 
 # For CVRP5K using LKH-3 as sub-solver
-python eval_cvrp.py --cpus 16 --problem_size 5000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt
+python eval_cvrp.py --cpus 12 --problem_size 5000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt
 
 # For CVRP5K using neural sub-TSP solver
 python main.py --problem_type cvrp --problem_size 5000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt --revision_lens 20 --revision_iters 5
 
 # For CVRP7K using LKH-3 as sub-solver
-python eval_cvrp.py --cpus 16 --problem_size 7000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt
+python eval_cvrp.py --cpus 12 --problem_size 7000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt
 
 # For CVRP7K using neural sub-TSP solver
 python main.py --problem_type cvrp --problem_size 7000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt --revision_lens 20 --revision_iters 5
@@ -105,6 +96,10 @@ python main.py --problem_type cvrp --problem_size 7000 --ckpt_path pretrained/Pa
 # e.g., for PCTSP500
 python main.py --problem_type pctsp --problem_size 500 --n_subset 10 --eval_batch_size 50 --val_size 100 --revision_iters 10 10 5 --revision_lens 100 50 20
 ```
+
+### Training
+
+Please refer to `./local_construction/` and `./heatmap/`.
 
 ## Acknowledgements
 

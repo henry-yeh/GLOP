@@ -5,13 +5,9 @@ import torch
 EPS = 1e-10
 
 k_sparse_table = {
-    20: 5,
-    50: 20,
-    100: 20,
     500: 50,
     1000: 100,
     5000: 200,
-    10000: 500
 }
 def load_partitioner(n, device):
     net = Net(32, 2, k_sparse=k_sparse_table[n]).to(device)

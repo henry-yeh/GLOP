@@ -8,12 +8,6 @@ get_cost_func = lambda input, pi: problem.get_costs(input, pi, return_local=True
 
 @torch.no_grad()
 def eval(subsets, coor, sol_penalty, opts): # eval_batch_size, revision_len, revision_iters, no_aug
-    '''
-    subsets: (width, max_seq_len)
-    coor: (p_size+1, 2)
-    sol_penalty: (width,)
-    '''
-    # assert subsets.size(1) > 100
     p_size = subsets.size(1)
     seeds = coor[subsets] # (width, p_size, 2)
     order = torch.arange(p_size)

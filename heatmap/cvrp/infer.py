@@ -10,14 +10,13 @@ EPS = 1e-10
 K_SPARSE = {
     1000: 100,
     2000: 200,
-    5000: 200,
-    7000: 200
 }
 def load_partitioner(n, device, ckpt_path):
     net = Net(48, 3, K_SPARSE[n], 2)
     if ckpt_path == '':
         ckpt_path = f'./pretrained/Partitioner/cvrp/cvrp-{n}.pt'
     ckpt = torch.load(ckpt_path, map_location=device)
+    print('  [*] Loading model from {}'.format(ckpt_path))
     if ckpt.get('model_state_dict', None):
         net.load_state_dict(ckpt['model_state_dict'])
     else:

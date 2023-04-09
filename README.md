@@ -40,7 +40,7 @@ python main.py --problem_size 500 --revision_iters 20 25 5 --revision_lens 100 5
 python main.py --problem_size 1000 --revision_iters 20 25 5 --revision_lens 100 50 20 --width 10 --eval_batch_size 32 --val_size 128 --decode_strategy greedy
 
 # For TSP10k:
-python main.py --problem_size 10000 --revision_iters 50 25 5 --revision_lens 100 50 20 --width 10 --eval_batch_size 4 --val_size 16 --decode_strategy greedy
+python main.py --problem_size 10000 --revision_iters 50 25 5 --revision_lens 100 50 20 --width 1 --eval_batch_size 16 --val_size 16 --decode_strategy greedy
 
 # For TSP100k:
 python main.py --problem_size 100000 --revision_iters 50 25 5 --revision_lens 100 50 20 --width 1 --eval_batch_size 1 --val_size 1 --decode_strategy greedy
@@ -95,6 +95,9 @@ python main.py --problem_type cvrp --problem_size 7000 --ckpt_path pretrained/Pa
 ```bash
 # e.g., for PCTSP500
 python main.py --problem_type pctsp --problem_size 500 --n_subset 10 --eval_batch_size 50 --val_size 100 --revision_iters 10 10 5 --revision_lens 100 50 20
+
+# set n_subset = 1 for greedy mode
+--n_subset 1
 ```
 
 ### Training

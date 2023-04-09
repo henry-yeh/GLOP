@@ -77,7 +77,7 @@ class Sampler():
             item = dist.sample()
             log_prob = dist.log_prob(item) if require_prob else None
         else:
-            item, _ = dist.max(dim=1)
+            _, item = dist.max(dim=1)
         return item, log_prob  # (bs,)
     
     def update_mask(self, visit_mask, depot_mask, cur_node, collected_prize):

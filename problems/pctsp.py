@@ -37,13 +37,14 @@ def init(path, opts):
     pi_all = []
     penalty_all = []
     max_seq_len = 0
+    greedy_mode = (opts.n_subset == 1)
     for inst_id, inst in enumerate(data[:opts.val_size]):
         depot_coor, coors, penalty, prize, _ = inst
         coors, penalty, prize = concat_list(depot_coor, coors, penalty, prize, opts)
         dataset.append(coors)
         heatmap = infer(partitioner, prize, penalty, coors)
         sampler = Sampler(prize, heatmap, opts.n_subset, opts.device)
-        subset = sampler.gen_subsets(require_prob=False, greedy_mode=False) # n_subset, max_len
+        subset = sampler.gen_subsets(require_prob=False, greedy_mode=greedy_mode) # n_subset, max_len
         assert subset.size(0) == opts.n_subset
         if subset.size(1) > max_seq_len:
             max_seq_len = subset.size(1)

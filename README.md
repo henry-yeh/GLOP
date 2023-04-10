@@ -6,8 +6,8 @@
 
 - Python>=3.8
 - NumPy==1.23
-- CUDA 11.0
-- PyTorch 1.7.0
+- CUDA 11.7
+- PyTorch 1.13.0
 - [PyTorch Scatter](https://github.com/rusty1s/pytorch_scatter) 2.0.7
 - [PyTorch Sparse](https://github.com/rusty1s/pytorch_sparse) 0.6.9
 - [PyTorch Geometric](https://github.com/pyg-team/pytorch_geometric) 2.0.4

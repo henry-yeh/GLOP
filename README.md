@@ -59,6 +59,8 @@ To reduce the inference duration, try:
 --width 1
 # add
 --no_aug
+# less revisions, e.g.,
+--revision_iters 5 5 5
 ```
 
 #### For CVRP

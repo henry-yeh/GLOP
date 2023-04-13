@@ -267,13 +267,9 @@ def LCP_TSP(
     shift_len
     ):
     
-    # width, problem_size, 2 (for TSP)
     batch_size, num_nodes, coordinate_dim = seeds.shape
-
     offset = num_nodes % revision_len
-
     embeddings = None # used only in case problem_size == revision_len for efficiency
-
     for i in range(revision_iter):
 
         decomposed_seeds, offset_seed = decomposition(seeds, 
@@ -291,8 +287,7 @@ def LCP_TSP(
         else:
             decomposed_seeds_revised, _ = revision(opts, cost_func, reviser, decomposed_seeds, original_subtour)
 
-        seeds = decomposed_seeds_revised.reshape(batch_size, -1, coordinate_dim)
-
+        seeds = decomposed_seeds_revised.reshape(batch_size, -1, coordinate_dim) 
         if offset_seed is not None:
             seeds = torch.cat([seeds,offset_seed], dim=1)
     return seeds
@@ -305,15 +300,14 @@ def reconnect(
         revisers,
     ):
     seed = batch
+    problem_size = seed.size(1) 
     if len(revisers) == 0:
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
     
     for revision_id in range(len(revisers)):
         assert opts.revision_lens[revision_id] <= seed.size(1)
         start_time = time.time()
-
         shift_len = max(opts.revision_lens[revision_id]//opts.revision_iters[revision_id], 1)
-
         seed = LCP_TSP(
             seed, 
             get_cost_func,
@@ -323,21 +317,18 @@ def reconnect(
             opts=opts,
             shift_len=shift_len
             )
+        cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)      
+        duration = time.time() - start_time
         
-        cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)
-        
-        if opts.problem_type == 'pctsp':
-            assert cost_revised.size(0) == seed.size(0) == opts.eval_batch_size
-            
-        elif opts.problem_type == 'tsp':
+        if revision_id == 0: # eliminate the underperforming ones after the first round of revisions
             cost_revised, cost_revised_minidx = cost_revised.reshape(-1, opts.eval_batch_size).min(0) # width, bs
             seed = seed.reshape(-1, opts.eval_batch_size, seed.shape[-2], 2)[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
+
+    assert cost_revised.shape == (opts.eval_batch_size,)
+    assert seed.shape == (opts.eval_batch_size, problem_size, 2)
         
-        duration = time.time() - start_time
-
-        # print(f'after construction {revision_id}', cost_revised.mean().item(), f'duration {duration} \n')
-
     return seed, cost_revised
+
 
 def sample_many():
     raise NotImplementedError

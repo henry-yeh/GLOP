@@ -30,9 +30,6 @@ Our datasets are mostly generated using the code of [*Attention, Learn to Solve 
 
 #### For TSP
 ```bash
-# For TSP200: 
-python main.py --problem_size 200 --revision_iters 20 25 5 --revision_lens 100 50 20 --width 10 --eval_batch_size 128 --val_size 128 --decode_strategy greedy
-
 # For TSP500:
 python main.py --problem_size 500 --revision_iters 20 25 5 --revision_lens 100 50 20 --width 10 --eval_batch_size 64 --val_size 128 --decode_strategy greedy
 

@@ -43,10 +43,10 @@ python main.py --problem_size 10000 --revision_iters 50 25 5 --revision_lens 100
 python main.py --problem_size 100000 --revision_iters 50 25 5 --revision_lens 100 50 20 --width 1 --eval_batch_size 1 --val_size 1 --decode_strategy greedy
 
 # To conduct cross-distribution evaluation, e.g.:
-python main.py --problem_size 100 --revision_lens 100 50 20 10 --revision_iters 20 10 10 5 --width 140 --eval_batch_size 100 --val_size 10000 --decode_strategy sampling --path data/tsp/tsp_uniform100_10000.pkl  --no_aug
+python main.py --problem_size 100 --revision_lens 100 50 20 10 --revision_iters 20 10 10 5 --width 140 --eval_batch_size 100 --val_size 10000 --decode_strategy sampling --path data/tsp/tsp_uniform100_10000.pkl --no_aug --no_prune
 
 # To reproduce the results of 49 TSPLib instances:
-python eval_tsplib.py --eval_batch_size 1 --val_size 49 --path data/tsp/tsplib49.pkl --width 128 --decode_strategy greedy
+python eval_tsplib.py --eval_batch_size 1 --val_size 49 --path data/tsp/tsplib49.pkl --width 128 --decode_strategy greedy --no_prune
 ```
 
 
@@ -73,7 +73,7 @@ python main.py --problem_type cvrp --problem_size 1000 --revision_lens 20 --revi
 python eval_cvrp.py --cpus 12 --problem_size 2000
 
 # For CVRP2K using neural sub-TSP solver
-python main.py --problem_type cvrp --problem_size 2000 --revision_lens 50 20 --revision_iters 3 2
+python main.py --problem_type cvrp --problem_size 2000 --revision_lens 50 20 --revision_iters 5 5
 
 # For CVRP5K using LKH-3 as sub-solver
 python eval_cvrp.py --cpus 12 --problem_size 5000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt

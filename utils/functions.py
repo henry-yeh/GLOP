@@ -320,10 +320,12 @@ def reconnect(
         cost_revised = (seed[:, 1:] - seed[:, :-1]).norm(p=2, dim=2).sum(1) + (seed[:, 0] - seed[:, -1]).norm(p=2, dim=1)      
         duration = time.time() - start_time
         
-        if revision_id == 0: # eliminate the underperforming ones after the first round of revisions
+        if revision_id == 0 and not opts.no_prune: # eliminate the underperforming ones after the first round of revisions
             cost_revised, cost_revised_minidx = cost_revised.reshape(-1, opts.eval_batch_size).min(0) # width, bs
             seed = seed.reshape(-1, opts.eval_batch_size, seed.shape[-2], 2)[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
-
+    if opts.no_prune:
+            cost_revised, cost_revised_minidx = cost_revised.reshape(-1, opts.eval_batch_size).min(0)
+            seed = seed.reshape(-1, opts.eval_batch_size, seed.shape[-2], 2)[cost_revised_minidx, torch.arange(opts.eval_batch_size)]
     assert cost_revised.shape == (opts.eval_batch_size,)
     assert seed.shape == (opts.eval_batch_size, problem_size, 2)
         

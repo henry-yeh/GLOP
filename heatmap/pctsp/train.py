@@ -52,7 +52,7 @@ def infer_instance(model, inst, width, opts):
 def train_epoch(n, bs, steps_per_epoch, net, optimizer, scheduler, opts):
     for _ in range(steps_per_epoch):
         train_instance(net, optimizer, n, bs, opts)
-        scheduler.step()
+    scheduler.step()
         
 @torch.no_grad()
 def validation(n, width, net, opts):

@@ -141,6 +141,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=10)
     opts = parser.parse_args()
     opts.no_aug = True
+    opts.no_prune = False
     opts.problem_type = 'tsp'
     
     torch.manual_seed(opts.seed)

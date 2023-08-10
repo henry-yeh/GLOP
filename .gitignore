@@ -9,8 +9,6 @@ __pycache__/
 *.tc_backward.*
 *.log
 *.bak
-temp.py
-temp.ipynb
 pretrained/
 desktop.ini
 test.ipynb

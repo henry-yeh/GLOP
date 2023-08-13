@@ -27,10 +27,10 @@ def load_partitioner(n, device, ckpt_path, k_sparse=None, depth=None):
     return net.to(device)
 
 @torch.no_grad()
-def infer(model, coors, demand, capacity, k_sparse=None):
+def infer(model, coors, demand, capacity, k_sparse=None, is_cvrplib=False):
     model.eval()
     n = demand.size(0)-1
     k_sparse = K_SPARSE[n] if k_sparse is None else k_sparse
-    pyg_data = gen_pyg_data(coors, demand, capacity, k_sparse)
+    pyg_data = gen_pyg_data(coors, demand, capacity, k_sparse, cvrplib=is_cvrplib)
     heatmap = infer_heatmap(model, pyg_data)
     return heatmap

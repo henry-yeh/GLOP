@@ -30,17 +30,19 @@ def add_padding(pi_all, max_seq_len, opts):
     assert ret.shape == (opts.val_size * opts.n_subset, max_seq_len)
     return ret
         
-def init(path, opts, partitioner=None):
+def init(path, opts, partitioner=None): # for cvrplib, partioner is not None, and depth is set to 6, k_sparse to 300 
+    is_cvrplib = True if partitioner is not None else False
+    k_sparse = 300 if is_cvrplib else None
+    
     data = load_dataset(path)
-    greedy_mode = True if opts.n_partition == 1 else False
+    greedy_mode = True if opts.n_partition == 1 else False 
     partitioner = load_partitioner(opts.problem_size, opts.device, opts.ckpt_path) if partitioner is None else partitioner
     dataset = []
     n_tsps_per_route_lst = []
     for inst_id, inst in enumerate(data[:opts.val_size]):
         depot_coor, coors, demand, capacity = inst
         coors, demand = concat_list(depot_coor, coors, demand, opts)
-        k_sparse = None if partitioner is None else 300
-        heatmap = infer(partitioner, coors, demand, capacity, k_sparse)
+        heatmap = infer(partitioner, coors, demand, capacity, k_sparse, is_cvrplib)
         sampler = Sampler(demand, heatmap, capacity, opts.n_partition, 'cpu')
         routes = sampler.gen_subsets(require_prob=False, greedy_mode=greedy_mode) # n_partition, max_len
         assert routes.size(0) == opts.n_partition

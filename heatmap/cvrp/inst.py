@@ -26,27 +26,40 @@ def gen_cos_sim_matrix(shift_coors):
     cosine_similarity_matrix = dot_products / magnitude_matrix
     return cosine_similarity_matrix
 
-def gen_pyg_data(coors, demand, capacity, k_sparse):
+def gen_pyg_data(coors, demand, capacity, k_sparse, cvrplib=False):
     n_nodes = demand.size(0)
     norm_demand = demand / capacity
     shift_coors = coors - coors[0]
     _x, _y = shift_coors[:, 0], shift_coors[:, 1]
     r = torch.sqrt(_x**2 + _y**2)
     theta = torch.atan2(_y, _x)
-    x = torch.stack((norm_demand, r, theta)).transpose(1, 0)
-    
-    euc_mat = gen_distance_matrix(coors)
-    cos_mat = gen_cos_sim_matrix(shift_coors)
-    topk_values, topk_indices = torch.topk(cos_mat, 
-                                           k=k_sparse, 
-                                           dim=1, largest=True)
-    edge_index = torch.stack([
-        torch.repeat_interleave(torch.arange(n_nodes).to(topk_indices.device),
-                                repeats=k_sparse),
-        torch.flatten(topk_indices)
-        ])
-    edge_attr1 = topk_values.reshape(-1, 1)
-    edge_attr2 = cos_mat[edge_index[0], edge_index[1]].reshape(k_sparse*n_nodes, 1)
+    x = torch.stack((norm_demand, r, theta)).transpose(1, 0) 
+    cos_mat = gen_cos_sim_matrix(shift_coors) 
+    if cvrplib:  
+        cos_mat = (cos_mat + cos_mat.min()) / cos_mat.max()
+        euc_mat = gen_distance_matrix(coors)
+        euc_aff = 1 - euc_mat 
+        topk_values, topk_indices = torch.topk(cos_mat + euc_aff, 
+                                            k=k_sparse, 
+                                            dim=1, largest=True)
+        edge_index = torch.stack([
+            torch.repeat_interleave(torch.arange(n_nodes).to(topk_indices.device),
+                                    repeats=k_sparse),
+            torch.flatten(topk_indices)
+            ])
+        edge_attr1 = euc_aff[edge_index[0], edge_index[1]].reshape(k_sparse*n_nodes, 1)
+        edge_attr2 = cos_mat[edge_index[0], edge_index[1]].reshape(k_sparse*n_nodes, 1)
+    else:
+        topk_values, topk_indices = torch.topk(cos_mat, 
+                                        k=k_sparse, 
+                                        dim=1, largest=True)
+        edge_index = torch.stack([
+            torch.repeat_interleave(torch.arange(n_nodes).to(topk_indices.device),
+                                    repeats=k_sparse),
+            torch.flatten(topk_indices)
+            ])
+        edge_attr1 = topk_values.reshape(-1, 1)
+        edge_attr2 = cos_mat[edge_index[0], edge_index[1]].reshape(k_sparse*n_nodes, 1)
     edge_attr = torch.cat((edge_attr1, edge_attr2), dim=1)
     pyg_data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
     return pyg_data

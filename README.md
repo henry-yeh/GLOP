@@ -86,6 +86,9 @@ python eval_cvrp.py --cpus 12 --problem_size 7000 --ckpt_path pretrained/Partiti
 
 # For CVRP7K using neural sub-TSP solver
 python main.py --problem_type cvrp --problem_size 7000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt --revision_lens 20 --revision_iters 5
+
+# For CVRPLIB
+python eval_cvrplib.py
 ```
 
 

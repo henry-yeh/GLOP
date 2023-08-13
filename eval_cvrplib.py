@@ -87,7 +87,7 @@ if __name__ == '__main__':
     
     gaps = []
     for name in scale.keys():
-        filename = 'data/cvrplib/' + name + ".pkl"
+        filename = 'data/vrp/cvrplib/' + name + ".pkl"
         opts.problem_size = p_size[name]
         opts.val_size = 1
         scale_fac = scale[name]

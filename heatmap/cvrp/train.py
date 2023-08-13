@@ -3,6 +3,7 @@ sys.path.insert(0, './')
 import torch
 import time
 import argparse
+from tqdm import tqdm
 from heatmap.cvrp.inst import gen_inst, gen_pyg_data, trans_tsp
 from heatmap.cvrp.eval import eval
 from heatmap.cvrp.sampler import Sampler
@@ -59,7 +60,7 @@ def infer_instance(model, inst, opts):
     return obj
 
 def train_epoch(n, bs, steps_per_epoch, net, optimizer, scheduler, opts):
-    for _ in range(steps_per_epoch):
+    for _ in tqdm(range(steps_per_epoch)):
         train_batch(net, optimizer, n, bs, opts)
     scheduler.step()
 
@@ -85,7 +86,7 @@ def train(n, bs, steps_per_epoch, n_epochs, opts):
         reviser.set_decode_type(opts.decode_strategy)    
     opts.revisers = revisers
     
-    net = Net(opts.units, 3, K_SPARSE[n], 2).to(DEVICE)
+    net = Net(opts.units, 3, K_SPARSE[n], 2, depth=opts.depth).to(DEVICE)
     optimizer = torch.optim.AdamW(net.parameters(), lr=LR)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=n_epochs)
     
@@ -123,9 +124,9 @@ if __name__ == '__main__':
     import pprint as pp
     parser = argparse.ArgumentParser()
     parser.add_argument('--problem_size', type=int, default=400)
-    parser.add_argument('--revision_lens', nargs='+', default=[] ,type=int,
+    parser.add_argument('--revision_lens', nargs='+', default=[20] ,type=int,
                         help='The sizes of revisers')
-    parser.add_argument('--revision_iters', nargs='+', default=[], type=int,
+    parser.add_argument('--revision_iters', nargs='+', default=[5], type=int,
                         help='Revision iterations (I_n)')
     parser.add_argument('--decode_strategy', type=str, default='greedy', help='decode strategy of the model')
     parser.add_argument('--width', type=int, default=10)
@@ -139,6 +140,7 @@ if __name__ == '__main__':
     parser.add_argument('--units', type=int, default=48)
     parser.add_argument('--no_clip', action='store_true')
     parser.add_argument('--batch_size', type=int, default=10)
+    parser.add_argument('--depth', type=int, default=12)
     opts = parser.parse_args()
     opts.no_aug = True
     opts.no_prune = False

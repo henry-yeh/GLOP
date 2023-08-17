@@ -38,6 +38,7 @@ CUDA_DEVICE_NUM = 0
 
 import os
 import sys
+import time
 import torch
 sys.path.insert(0, '..')
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -47,23 +48,21 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # import
 
 import logging
-
-# from eval_atsp.utils_atsp.utils import create_logger, copy_all_src
-# from eval_atsp.ATSPTester import ATSPTester as Tester
 from utils.insertion import random_insertion_non_euclidean
-
-
+from utils_atsp.utils import create_logger, copy_all_src
+from ATSPTester_glop import ATSPTester as Tester
+import numpy as np
 ##########################################################################################
 # parameters
 
 env_params = {
-    'node_cnt': 20,
+    'node_cnt': 50,
     'problem_gen_params': {
         'int_min': 0,
         'int_max': 1000*1000,
         'scaler': 1000*1000
     },
-    'pomo_size': 1  # same as node_cnt
+    'pomo_size': 50  # same as node_cnt
 }
 
 model_params = {
@@ -86,13 +85,13 @@ tester_params = {
     'use_cuda': USE_CUDA,
     'cuda_device_num': CUDA_DEVICE_NUM,
     'model_load': {
-        'path': './result/saved_atsp100_model',  # directory path of pre-trained model and log files saved.
-        'epoch': 12000,  # epoch version of pre-trained model to load.
+        'path': './result/saved_atsp50_model',  # directory path of pre-trained model and log files saved.
+        'epoch': 8000,  # epoch version of pre-trained model to load.
     },
     'saved_problem_folder': "../data/n20",
     'saved_problem_filename': 'problem_20_0_1000000_{}.atsp',
-    'test_batch_size': 30,
-    'augmentation_enable': True,
+    'test_batch_size': 1,
+    'augmentation_enable': False,
     'aug_factor': 1,
     'aug_batch_size': 1,
 }
@@ -111,39 +110,56 @@ logger_params = {
 ##########################################################################################
 # main
 
-def main():
+L = 1.5
 
-    # create_logger(**logger_params)
-    _print_config()
+def revision(tour, inst, tester):
+    revision_len = env_params['node_cnt']
+    assert revision_len == 50
+    sub_tours = tour.reshape(-1, revision_len)
+    sub_insts = [inst[sub_tour][:, sub_tour] for sub_tour in sub_tours]
+    original_scores = torch.stack([inst[sub_tour[:-1], torch.roll(sub_tour, shifts=-1)[:-1]].sum() for sub_tour in sub_tours])
+    for sub_inst in sub_insts: # equivalent ATSP of each ASHPP
+        sub_inst[:, 0] += L
+        sub_inst[:, -1] += L
+        sub_inst[0, :] += L
+        sub_inst[-1, :] += L
+        sub_inst[0, 0] = sub_inst[0, -1] = sub_inst[-1, 0] = sub_inst[-1, -1] = 0
+    sub_insts = torch.stack(sub_insts)
     
-    n = 250
+    revised_scores = torch.stack(tester.run(sub_insts)) - 2 * L
+    
+    improved = original_scores - revised_scores
+    improved[improved < 0] = 0
+
+    return improved.sum().item()
+    
+
+def main(n):    
     dataset = torch.load('../data/atsp/ATSP{}.pt'.format(n), map_location='cuda:0')
-    env_params['node_cnt'] = n
-    model_params['one_hot_seed_cnt'] = n
+    env_params['node_cnt'] = 50
+    model_params['one_hot_seed_cnt'] = 50
+    
+    tester = Tester(env_params=env_params,
+                    model_params=model_params,
+                    tester_params=tester_params)
     
     order = torch.randperm(n)
-    res = [random_insertion_non_euclidean(dataset[i], order) for i in range(len(dataset))]
     
-    print(res[0])
+    original_costs = []
+    revised_costs = []
+    
+    start = time.time()
+    for inst in dataset:
+        tour, cost = random_insertion_non_euclidean(inst, order)
+        original_costs.append(cost)
+        improved_cost = revision(torch.tensor(tour.astype(np.int64)), inst, tester)
+        revised_costs.append(cost - improved_cost)
+    total_duration = time.time() - start
+    
+    print("initial costs: ", sum(original_costs) / len(original_costs))
+    print("revised costs: ", sum(revised_costs) / len(revised_costs))
+    print("total duration: ", total_duration)
 
-    # tester = Tester(env_params=env_params,
-    #                 model_params=model_params,
-    #                 tester_params=tester_params,
-    #                 problems=dataset)
-
-    # copy_all_src(tester.result_folder)
-
-    # tester.run()
-
-
-
-def _print_config():
-    logger = logging.getLogger('root')
-    logger.info('DEBUG_MODE: {}'.format(DEBUG_MODE))
-    [logger.info(g_key + "{}".format(globals()[g_key])) for g_key in globals().keys() if g_key.endswith('params')]
-
-
-##########################################################################################
 
 if __name__ == "__main__":
-    main()
+    main(int(sys.argv[1]))

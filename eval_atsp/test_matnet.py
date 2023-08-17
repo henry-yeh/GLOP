@@ -91,9 +91,9 @@ tester_params = {
     'saved_problem_folder': "../data/n20",
     'saved_problem_filename': 'problem_20_0_1000000_{}.atsp',
     'test_batch_size': 1,
-    'augmentation_enable': False,
-    # 'aug_factor': 1,
-    # 'aug_batch_size': 1,
+    'augmentation_enable': True,
+    'aug_factor': 8,
+    'aug_batch_size': 1,
 }
 if tester_params['augmentation_enable']:
     tester_params['test_batch_size'] = tester_params['aug_batch_size']
@@ -110,12 +110,11 @@ logger_params = {
 ##########################################################################################
 # main
 
-def main():
+def main(n):
 
     create_logger(**logger_params)
     _print_config()
-    
-    n = 250
+
     dataset = torch.load('../data/atsp/ATSP{}.pt'.format(n), map_location='cuda:0')
     env_params['node_cnt'] = n
     env_params['pomo_size'] = n
@@ -142,4 +141,4 @@ def _print_config():
 ##########################################################################################
 
 if __name__ == "__main__":
-    main()
+    main(int(sys.argv[1]))

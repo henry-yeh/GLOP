@@ -97,10 +97,17 @@ def load_single_problem_from_file(filename, node_cnt, scaler):
 
 
 if __name__ == '__main__':
+    import os
     problem_gen_params = {
     'int_min': 0,
     'int_max': 1000*1000,
     'scaler': 1000*1000
     }
-    problems = get_random_problems(30, 250, problem_gen_params)
-    torch.save(problems, "ATSP250.pt")
+    os.mkdir("../data/atsp")
+    
+    torch.manual_seed(1234)   
+    
+    dataset_size = 30
+    for scale in [150, 200, 250]:
+        problems = get_random_problems(dataset_size, scale, problem_gen_params)
+        torch.save(problems, "../data/atsp/ATSP{}.pt".format(scale))

@@ -102,6 +102,10 @@ python main.py --problem_type pctsp --problem_size 500 --n_subset 10 --eval_batc
 --n_subset 1
 ```
 
+#### For ATSP
+
+Please refer to `./eval_atsp/`
+
 ### Training
 
 Please refer to `./local_construction/` and `./heatmap/`.
@@ -112,3 +116,4 @@ Please refer to `./local_construction/` and `./heatmap/`.
 * https://github.com/alstn12088/LCP
 * https://github.com/Spider-scnu/TSP
 * https://github.com/jieyibi/AMDKD
+* https://github.com/yd-kwon/MatNet

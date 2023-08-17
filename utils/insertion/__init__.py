@@ -14,7 +14,7 @@ def _to_numpy(arr):
         return arr
 
 
-def random_insertion(cities, order):
+def random_insertion(cities, order=None):
     assert len(cities.shape) == 2 and cities.shape[1] == 2
     citycount = cities.shape[0]
     if order is None:
@@ -26,7 +26,23 @@ def random_insertion(cities, order):
     if cities.dtype is not np.float32:
         cities = _to_numpy(cities).astype(np.float32)
 
-    result, cost = insertion.random(cities, order)
+    result, cost = insertion.random(cities, order, True)
+
+    return result, cost
+
+def random_insertion_non_euclidean(distmap, order=None):
+    assert len(distmap.shape) == 2 and distmap.shape[1] == distmap.shape[0]
+    citycount = distmap.shape[0]
+    if order is None:
+        order = np.arange(citycount, dtype=np.uint32)
+    else:
+        assert len(order.shape) == 1 and order.shape[0] == citycount
+        order = _to_numpy(order).astype(np.uint32)
+
+    if distmap.dtype is not np.float32:
+        distmap = _to_numpy(distmap).astype(np.float32)
+
+    result, cost = insertion.random(distmap, order, False)
 
     return result, cost
 

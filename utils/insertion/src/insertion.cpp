@@ -17,11 +17,12 @@ insertion_random(PyObject *self, PyObject *args)
     /* ----------------- read cities' position from PyObject ----------------- */
     PyObject *pycities;
     PyObject *pyorder;
-    if (!PyArg_ParseTuple(args, "OO", &pycities, &pyorder))
+    int isEuclidean = 1;
+    if (!PyArg_ParseTuple(args, "OOp", &pycities, &pyorder, &isEuclidean))
         return NULL;
     if (!PyArray_Check(pycities) || !PyArray_Check(pyorder))
         return NULL;
-    if (PyArray_NDIM(pycities) != 2 || PyArray_NDIM(pyorder) != 1)
+    if (isEuclidean && PyArray_NDIM(pycities) != 2 || PyArray_NDIM(pyorder) != 1)
         return NULL;
     if (PyArray_TYPE(pycities) != NPY_FLOAT32 || PyArray_TYPE(pyorder) != NPY_UINT32)
         return NULL;
@@ -34,10 +35,17 @@ insertion_random(PyObject *self, PyObject *args)
     unsigned *order = (unsigned *)PyArray_DATA(pyarrorder);
     // for (unsigned i = 0; i < cities_count; i++)
     //     printf("(%f, %f)\n", cities[i * 2], cities[i * 2 + 1]);
+    TSPinstance *tspi;
+    if(isEuclidean){
+        tspi = new TSPinstanceEuclidean(citycount, cities);
+    }else{
+        if(citycount!=(unsigned)shape[1])
+            return NULL;
+        tspi = new TSPinstanceNonEuclidean(citycount, cities);
+    }
 
     /* ---------------------------- random insertion ---------------------------- */
-    TSPinstance tspi = TSPinstance(citycount, cities);
-    Insertion ins = Insertion(&tspi);
+    Insertion ins = Insertion(tspi);
     unsigned *output = ins.randomInsertion(order);
     double distance = ins.getdistance();
 
@@ -46,6 +54,7 @@ insertion_random(PyObject *self, PyObject *args)
     PyObject *returnarr = PyArray_SimpleNewFromData(1, &dims, NPY_UINT32, output);
     PyObject *returntuple = PyTuple_Pack(2, returnarr, PyFloat_FromDouble(distance));
 
+    delete tspi;
     return returntuple;
 }
 

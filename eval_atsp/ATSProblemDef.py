@@ -102,5 +102,5 @@ if __name__ == '__main__':
     'int_max': 1000*1000,
     'scaler': 1000*1000
     }
-    problems = get_random_problems(30, 500, problem_gen_params)
-    torch.save(problems, "ATSP500.pt")
+    problems = get_random_problems(30, 150, problem_gen_params)
+    torch.save(problems, "ATSP150.pt")

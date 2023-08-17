@@ -29,7 +29,7 @@ THE SOFTWARE.
 # Machine Environment Config
 
 DEBUG_MODE = False
-USE_CUDA = not DEBUG_MODE
+USE_CUDA = True
 CUDA_DEVICE_NUM = 0
 
 
@@ -38,7 +38,8 @@ CUDA_DEVICE_NUM = 0
 
 import os
 import sys
-
+import torch
+sys.path.insert(0, '..')
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -47,8 +48,9 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 import logging
 
-from utils.utils import create_logger, copy_all_src
-from ATSPTester import ATSPTester as Tester
+# from eval_atsp.utils_atsp.utils import create_logger, copy_all_src
+# from eval_atsp.ATSPTester import ATSPTester as Tester
+from utils.insertion import random_insertion_non_euclidean
 
 
 ##########################################################################################
@@ -61,7 +63,7 @@ env_params = {
         'int_max': 1000*1000,
         'scaler': 1000*1000
     },
-    'pomo_size': 20  # same as node_cnt
+    'pomo_size': 1  # same as node_cnt
 }
 
 model_params = {
@@ -84,16 +86,15 @@ tester_params = {
     'use_cuda': USE_CUDA,
     'cuda_device_num': CUDA_DEVICE_NUM,
     'model_load': {
-        'path': './result/saved_atsp20_model',  # directory path of pre-trained model and log files saved.
-        'epoch': 5000,  # epoch version of pre-trained model to load.
+        'path': './result/saved_atsp100_model',  # directory path of pre-trained model and log files saved.
+        'epoch': 12000,  # epoch version of pre-trained model to load.
     },
     'saved_problem_folder': "../data/n20",
     'saved_problem_filename': 'problem_20_0_1000000_{}.atsp',
-    'file_count': 10*1000,
-    'test_batch_size': 1000,
+    'test_batch_size': 30,
     'augmentation_enable': True,
     'aug_factor': 1,
-    'aug_batch_size': 100,
+    'aug_batch_size': 1,
 }
 if tester_params['augmentation_enable']:
     tester_params['test_batch_size'] = tester_params['aug_batch_size']
@@ -112,24 +113,28 @@ logger_params = {
 
 def main():
 
-    if DEBUG_MODE:
-        _set_debug_mode()
-
-    create_logger(**logger_params)
+    # create_logger(**logger_params)
     _print_config()
+    
+    n = 250
+    dataset = torch.load('../data/atsp/ATSP{}.pt'.format(n), map_location='cuda:0')
+    env_params['node_cnt'] = n
+    model_params['one_hot_seed_cnt'] = n
+    
+    order = torch.randperm(n)
+    res = [random_insertion_non_euclidean(dataset[i], order) for i in range(len(dataset))]
+    
+    print(res[0])
 
-    tester = Tester(env_params=env_params,
-                    model_params=model_params,
-                    tester_params=tester_params)
+    # tester = Tester(env_params=env_params,
+    #                 model_params=model_params,
+    #                 tester_params=tester_params,
+    #                 problems=dataset)
 
-    copy_all_src(tester.result_folder)
+    # copy_all_src(tester.result_folder)
 
-    tester.run()
+    # tester.run()
 
-
-def _set_debug_mode():
-    tester_params['aug_factor'] = 10
-    tester_params['file_count'] = 100
 
 
 def _print_config():

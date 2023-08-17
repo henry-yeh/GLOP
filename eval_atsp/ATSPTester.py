@@ -33,7 +33,7 @@ from logging import getLogger
 from ATSPEnv import ATSPEnv as Env
 from ATSPModel import ATSPModel as Model
 
-from utils.utils import get_result_folder, AverageMeter, TimeEstimator
+from utils_atsp.utils import get_result_folder, AverageMeter, TimeEstimator
 
 from ATSProblemDef import load_single_problem_from_file
 
@@ -42,7 +42,8 @@ class ATSPTester:
     def __init__(self,
                  env_params,
                  model_params,
-                 tester_params):
+                 tester_params,
+                 problems):
 
         # save arguments
         self.env_params = env_params
@@ -79,19 +80,7 @@ class ATSPTester:
         self.time_estimator = TimeEstimator()
 
         # Load all problems into tensor
-        self.logger.info(" *** Loading Saved Problems *** ")
-        saved_problem_folder = self.tester_params['saved_problem_folder']
-        saved_problem_filename = self.tester_params['saved_problem_filename']
-        file_count = self.tester_params['file_count']
-        node_cnt = self.env_params['node_cnt']
-        scaler = self.env_params['problem_gen_params']['scaler']
-        self.all_problems = torch.empty(size=(file_count, node_cnt, node_cnt))
-        for file_idx in range(file_count):
-            formatted_filename = saved_problem_filename.format(file_idx)
-            full_filename = os.path.join(saved_problem_folder, formatted_filename)
-            problem = load_single_problem_from_file(full_filename, node_cnt, scaler)
-            self.all_problems[file_idx] = problem
-        self.logger.info("Done. ")
+        self.all_problems = problems
 
     def run(self):
 
@@ -100,7 +89,7 @@ class ATSPTester:
         score_AM = AverageMeter()
         aug_score_AM = AverageMeter()
 
-        test_num_episode = self.tester_params['file_count']
+        test_num_episode = self.all_problems.size(0)
         episode = 0
 
         while episode < test_num_episode:

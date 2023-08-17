@@ -20,22 +20,43 @@ public:
 
 class TSPinstance
 {
-public:
+public: 
     unsigned citycount;
-    float *citypos;
+    TSPinstance(unsigned cc){
+        this->citycount = cc;
+    };
+    virtual float getdist(unsigned cityA, unsigned cityB){
+        return 0.0f;
+    };
+    ~TSPinstance(){};
+};
 
-    TSPinstance(unsigned cc, float *cp)
-    {
-        citycount = cc;
+class TSPinstanceEuclidean: public TSPinstance
+{
+public:
+    TSPinstanceEuclidean(unsigned cc, float *cp): TSPinstance(cc){
         citypos = cp;
     };
-    // ~TSPinstance();
-    float getdist(unsigned a, unsigned b)
-    {
+    float getdist(unsigned a, unsigned b){
         float *p1 = citypos + (a << 1), *p2 = citypos + (b << 1);
         float d1 = *p1 - *p2, d2 = *(p1 + 1) - *(p2 + 1);
         return sqrtf32(d1 * d1 + d2 * d2);
     };
+private:
+    float *citypos;
+};
+
+class TSPinstanceNonEuclidean: public TSPinstance
+{
+public:
+    TSPinstanceNonEuclidean(unsigned cc, float *distmat): TSPinstance(cc){
+        this->distmat = distmat;
+    };
+    float getdist(unsigned a, unsigned b){
+        return distmat[citycount * a + b];
+    };
+private:
+    float *distmat;
 };
 
 class Insertion

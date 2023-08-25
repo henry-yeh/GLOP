@@ -111,6 +111,7 @@ if __name__ == '__main__':
     
     opts = parser.parse_args()
     opts.no_aug = True
+    opts.no_prune = False
     opts.problem_type = 'tsp'
     
     torch.manual_seed(opts.seed)

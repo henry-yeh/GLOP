@@ -1,11 +1,13 @@
 import torch
 from torch.distributions import Categorical
+import numpy as np
+import numba
 
 class Sampler():
 
     def __init__(self, heatmap, cover_map, bs=20, device='cpu'):
         self.n = heatmap.size(0) # including dummy node (depot)
-        self.heatmap = heatmap
+        self.heatmap = heatmap + 1e-9
         self.cover_map = cover_map # tensor, (n, #covered_nodes), cover_map[0] = [0, 0, .., 0]
         self.k = cover_map.size(1)
         self.bs = bs
@@ -23,10 +25,13 @@ class Sampler():
         
         is_covered = torch.zeros(size=(self.bs, self.n), dtype=torch.bool, device=self.device) # binary indicators of whether a city has been covered
         is_covered[:, 0] = 1 # the dummy depot has been covered
+        
+        dynamic_heatmap = torch.ones((self.bs, self.n, self.n), device=self.device)
+        
         done = False
         # construction
         while not done:
-            cur_node, log_prob = self.pick_node(visit_mask, cur_node, require_prob, greedy_mode) # pick action
+            cur_node, log_prob = self.pick_node(visit_mask, dynamic_heatmap, cur_node, require_prob, greedy_mode) # pick action
             # update solution and log_probs
             solutions.append(cur_node) 
             log_probs_list.append(log_prob)
@@ -36,6 +41,7 @@ class Sampler():
             
             is_covered = self.update_cover(cur_node, is_covered, self.cover_map)
             visit_mask = self.update_mask(visit_mask, cur_node, is_covered)
+            dynamic_heatmap = torch.from_numpy(update_heatmap(dynamic_heatmap.cpu().numpy(), cur_node.cpu().numpy(), self.cover_map.cpu().numpy())).to(self.device)
             
             # check done
             done = self.check_done(cur_node)
@@ -45,10 +51,11 @@ class Sampler():
         else:
             return torch.stack(solutions).permute(1, 0)
 
-    def pick_node(self, visit_mask, cur_node, require_prob, greedy_mode=False):
+    def pick_node(self, visit_mask, dynamic_heatmap, cur_node, require_prob, greedy_mode=False):
         log_prob = None
-        heatmap = self.heatmap[cur_node] 
-        dist = heatmap * visit_mask
+        heatmap = self.heatmap[cur_node]
+        dynamic_heatmap = dynamic_heatmap[torch.arange(self.bs), cur_node]
+        dist = heatmap * visit_mask * dynamic_heatmap
         if not greedy_mode:
             dist = Categorical(dist)
             item = dist.sample()
@@ -84,19 +91,38 @@ class Sampler():
         # all at depot ?
         return (cur_node == 0).all()
     
+@numba.njit()
+def update_heatmap(dynamic_heatmap: np.ndarray, cur_node: np.ndarray, cover_map: np.ndarray):
+    '''
+    dynamic heatmap: (bs, n, n)
+    cur_node: (bs,)
+    cover_map: (n, NC+1)
+    '''
+    bs, n, _ = dynamic_heatmap.shape
+    NC = cover_map.shape[-1] - 1
+    for b in range(bs):
+        node = cur_node[b]
+        if node == 0:
+            continue
+        covered = cover_map[node]
+        for c in range(1, NC+1):
+            dynamic_heatmap[b, :, covered[c]] *= c / (NC+1)
+    return dynamic_heatmap
+        
 
 if __name__ == '__main__':
     n = 100
     k = 7
     coor = torch.rand((n+1, 2))
-    coor[0] += 2
+    coor[0] = 2
     distances = torch.norm(coor[:, None] - coor, dim=2, p=2)
     distances[torch.arange(n+1), torch.arange(n+1)] = 1e5 # note here
     topk_values, topk_indices = torch.topk(distances, 
                                             k=k, 
                                             dim=1, largest=False)
+    topk_indices[0] = 0
     sampler = Sampler(1/distances, cover_map=topk_indices, bs=20)
     sols, log_probs = sampler.gen_subsets(require_prob=True)
-    print("sols: ", sols)
+    print("sols: ", sols.shape)
     print("log probs: ", log_probs)
     

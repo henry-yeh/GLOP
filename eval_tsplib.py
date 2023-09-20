@@ -59,7 +59,7 @@ def _eval_dataset(dataset, opts, device, revisers):
     
     results = []
 
-    start = time.time()
+    total_time = 0
 
     for batch_id, batch in tqdm(enumerate(dataloader), disable=opts.no_progress_bar):
         # tsp batch shape: (bs, problem size, 2)
@@ -75,8 +75,10 @@ def _eval_dataset(dataset, opts, device, revisers):
 
             orders = [torch.randperm(problem_size) for i in range(width)]
             
+            start = time.time()
             pi_batch = [random_insertion(instance, orders[order_id])[0] for order_id in range(len(orders)) for instance in batch]
             pi_batch = torch.tensor(np.array(pi_batch).astype(np.int64)).reshape(-1, problem_size)
+            total_time += time.time() - start
 
             batch = batch.repeat(width, 1, 1)
 
@@ -103,28 +105,30 @@ def _eval_dataset(dataset, opts, device, revisers):
                 _revisers = revisers[2:]
                 opts.no_aug = True
                 opts.revision_lens = [20, 10]
-                opts.revision_iters = [10, 5]
+                opts.revision_iters = [10, 5] # 2,1
             elif 50<= problem_size < 100:
                 opts.no_aug = True
                 _revisers = revisers[1:3]
                 opts.revision_lens = [50, 20]
-                opts.revision_iters = [10, 5]
+                opts.revision_iters = [10, 5] # 2,1
             elif 100<=problem_size< 150:
                 opts.no_aug = True
                 opts.revision_lens = [100, 50, 20]
                 _revisers = revisers[:3]
-                opts.revision_iters = [10,5,5]
+                opts.revision_iters = [10,5,5] # 4,2,1
             else:
                 _revisers = revisers[:3]
                 opts.revision_lens = [100, 50, 20]
-                opts.revision_iters = [10,10,5]
+                opts.revision_iters = [10,10,5] # 4,2,1
 
+            start = time.time()
             tours, costs_revised = reconnect( 
                                         get_cost_func=get_cost_func,
                                         batch=seed,
                                         opts=opts,
                                         revisers=_revisers,
                                         )
+            total_time += time.time() - start
             # tours shape: problem_size, 2
             # costs: costs before revision
             # costs_revised: costs after revision
@@ -135,9 +139,7 @@ def _eval_dataset(dataset, opts, device, revisers):
         else:
             results.append((avg_cost, None, tours))
 
-    duration = time.time() - start
-
-    return results, duration
+    return results, total_time
 
 
 if __name__ == "__main__":
@@ -157,12 +159,12 @@ if __name__ == "__main__":
     parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
     parser.add_argument("--device_id", type=int, default=0)
     parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
-    parser.add_argument('--width', type=int, default=1, 
+    parser.add_argument('--width', type=int, default=1,  # 128 / 48
                         help='The initial solutions for a TSP instance generated with diversified insertion')
     parser.add_argument('--no_aug', action='store_true', help='Disable instance augmentation')
     parser.add_argument('--path', type=str, default='', 
                         help='The test dataset path for cross-distribution evaluation')
-    parser.add_argument('--prune', action='store_true', help='Prune the unpromising tours after the first round of revisions')
+    parser.add_argument('--no_prune', action='store_true', help='Do not prune the unpromising tours after the first round of revisions')
     opts = parser.parse_args()
     if opts.path == '':
         dataset_path = f'data/tsp/tsp{opts.problem_size}_test.pkl'

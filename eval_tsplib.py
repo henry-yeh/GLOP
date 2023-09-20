@@ -162,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument('--no_aug', action='store_true', help='Disable instance augmentation')
     parser.add_argument('--path', type=str, default='', 
                         help='The test dataset path for cross-distribution evaluation')
-    parser.add_argument('--prune', action='store_true', help='Prune the unpromising tours after the first round of revisions')
+    parser.add_argument('--no_prune', action='store_true', help='Do not prune the unpromising tours after the first round of revisions')
     opts = parser.parse_args()
     if opts.path == '':
         dataset_path = f'data/tsp/tsp{opts.problem_size}_test.pkl'

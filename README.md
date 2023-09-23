@@ -60,6 +60,11 @@ To reduce the inference duration, try:
 --revision_iters 5 5 5
 ```
 
+#### For ATSP
+
+Please refer to `./eval_atsp/`
+
+
 #### For CVRP
 
 ```bash
@@ -87,8 +92,11 @@ python eval_cvrp.py --cpus 12 --problem_size 7000 --ckpt_path pretrained/Partiti
 # For CVRP7K using neural sub-TSP solver
 python main.py --problem_type cvrp --problem_size 7000 --ckpt_path pretrained/Partitioner/cvrp/cvrp-2000.pt --revision_lens 20 --revision_iters 5
 
-# For CVRPLIB
+# For CVRPLIB using LKH-3 as sub-solver
 python eval_cvrplib.py
+
+# For CVRPLIB using neural sub-TSP solver
+python eval_cvrplib_neural.py
 ```
 
 
@@ -102,9 +110,6 @@ python main.py --problem_type pctsp --problem_size 500 --n_subset 10 --eval_batc
 --n_subset 1
 ```
 
-#### For ATSP
-
-Please refer to `./eval_atsp/`
 
 ### Training
 

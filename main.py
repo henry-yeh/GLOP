@@ -11,6 +11,8 @@ from utils.functions import reconnect
 from utils.functions import load_problem
 import pprint as pp
 from utils.insertion import random_insertion
+from heatmap.cvrp.infer import load_partitioner
+from heatmap.cvrp.inst import sum_cost
 
 
 def eval_dataset(dataset_path, opts):
@@ -32,13 +34,12 @@ def eval_dataset(dataset_path, opts):
     results, duration = _eval_dataset(dataset_path, opts, opts.device, revisers)
 
     costs, costs_revised, costs_revised_with_penalty, tours = zip(*results)
-    
     costs = torch.tensor(costs)
-    if opts.problem_type == 'cvrp':
+    if opts.problem_type in ['cvrp', 'cvrplib']:
         costs_revised = torch.stack(costs_revised)
     else:
         costs_revised = torch.cat(costs_revised, dim=0)
-        
+    
     if opts.problem_type == 'pctsp':
         costs_revised_with_penalty = torch.cat(costs_revised_with_penalty, dim=0)
 
@@ -79,9 +80,15 @@ def _eval_dataset(dataset_path, opts, device, revisers):
         assert pi_all.shape == (1, opts.val_size*opts.n_subset, max_seq_len)
     elif opts.problem_type == 'cvrp':
         from problems.cvrp import init  
-        from heatmap.cvrp.inst import sum_cost
         dataset, n_tsps_per_route_lst = init(dataset_path, opts)
         opts.eval_batch_size = 1
+    elif opts.problem_type == 'cvrplib':
+        from problems.cvrp import init  
+        ckpt_path = "./pretrained/Partitioner/cvrp/cvrp-2000-cvrplib.pt" if opts.ckpt_path == '' else opts.ckpt_path   
+        partitioner = load_partitioner(2000, opts.device, ckpt_path, 300, 6)
+        dataset, n_tsps_per_route_lst = init(dataset_path, opts, partitioner)
+        opts.eval_batch_size = 1
+        
     dataloader = DataLoader(dataset, batch_size=opts.eval_batch_size)
     
 
@@ -98,7 +105,7 @@ def _eval_dataset(dataset_path, opts, device, revisers):
                 batch = batch.repeat(opts.width, 1, 1) # (1,1,1) for pctsp
                 pi_batch = pi_all[:, batch_id*opts.eval_batch_size: (batch_id+1)*opts.eval_batch_size, :].reshape(-1, p_size)
                 seed = batch.gather(1, pi_batch.unsqueeze(-1).repeat(1,1,2))
-            elif opts.problem_type == 'cvrp':
+            elif opts.problem_type in ['cvrp', 'cvrplib']:
                 batch = batch.squeeze() # (n_subTSPs_for_width_routes, max_seq_len, 2)
                 n_subTSPs, max_seq_len, _ = batch.shape
                 n_tsps_per_route = n_tsps_per_route_lst[batch_id]
@@ -118,8 +125,10 @@ def _eval_dataset(dataset_path, opts, device, revisers):
             if opts.problem_type in ['tsp', 'pctsp']:
                 cost_ori, _ = cost_ori.reshape(-1, opts.eval_batch_size).min(0) # width, bs
                 avg_cost = cost_ori.mean().item()
-            elif opts.problem_type == 'cvrp':
+            elif opts.problem_type in ['cvrp', 'cvrplib']:
                 avg_cost = sum_cost(cost_ori, n_tsps_per_route).min()
+            else:
+                raise NotImplementedError
 
             if opts.problem_size <= 100 and opts.problem_type=='tsp' and opts.tsp_aug:
                 seed2 = torch.cat((1 - seed[:, :, [0]], seed[:, :, [1]]), dim=2)
@@ -140,17 +149,19 @@ def _eval_dataset(dataset_path, opts, device, revisers):
             costs_revised, _ = costs_revised.reshape(-1, opts.n_subset).min(1)
             tours = tours.reshape(-1, opts.n_subset, max_seq_len, 2)[torch.arange(opts.eval_batch_size//opts.n_subset), costs_revised_minidx, :, :]
             assert costs_revised.size(0) == costs_revised_with_penalty.size(0) == tours.size(0) == opts.eval_batch_size//opts.n_subset
-        elif opts.problem_type == 'cvrp':
+        elif opts.problem_type in ['cvrp', 'cvrplib']:
             assert costs_revised.shape == (n_subTSPs,)
             costs_revised, best_partition_idx = sum_cost(costs_revised, n_tsps_per_route).min(dim=0)
             subtour_start = sum(n_tsps_per_route[:best_partition_idx])
             tours = tours[subtour_start: subtour_start+n_tsps_per_route[best_partition_idx]]
             assert tours.shape == (n_tsps_per_route[best_partition_idx], max_seq_len, 2)
             tours = tours.reshape(-1, 2)
+        else:
+            raise NotImplementedError
         
         if opts.problem_type == 'pctsp':
             results.append((avg_cost, costs_revised, costs_revised_with_penalty, tours))
-        elif opts.problem_type in ['tsp', 'cvrp']:
+        elif opts.problem_type in ['tsp', 'cvrp', 'cvrplib']:
             results.append((avg_cost, costs_revised, None, tours))
         else:
             raise NotImplementedError

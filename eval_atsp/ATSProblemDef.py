@@ -103,11 +103,13 @@ if __name__ == '__main__':
     'int_max': 1000*1000,
     'scaler': 1000*1000
     }
-    os.mkdir("../data/atsp")
+    # if no such directory, create one
+    if not os.path.exists("../data/atsp"):
+        os.mkdir("../data/atsp")
     
     torch.manual_seed(1234)   
     
     dataset_size = 30
-    for scale in [150, 200, 250]:
+    for scale in [150, 200, 1000]:
         problems = get_random_problems(dataset_size, scale, problem_gen_params)
         torch.save(problems, "../data/atsp/ATSP{}.pt".format(scale))

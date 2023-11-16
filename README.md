@@ -1,20 +1,19 @@
-# Learning Global Partition and Local Construction for Solving Large-scale Routing Problems
+# GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time
 
+**Welcome!** This repository contains the code implementation of paper [*GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time*](). GLOP is a unified hierarchical framework that efficiently scales toward large-scale routing problems. It partitions large routing problems into Travelling Salesman Problems (TSPs) and TSPs into Shortest Hamiltonian Path Problems. We hybridize non-autoregressive neural heuristics for coarse-grained problem partitions and autoregressive neural heuristics for fine-grained route constructions.
 
+![diagram](./diagram.png)
 
 ## Dependencies
 
 - Python>=3.8
-- NumPy==1.23
-- CUDA 11.7
+- NumPy 1.23
 - PyTorch 1.13.0
 - [PyTorch Scatter](https://github.com/rusty1s/pytorch_scatter) 2.0.7
 - [PyTorch Sparse](https://github.com/rusty1s/pytorch_sparse) 0.6.9
 - [PyTorch Geometric](https://github.com/pyg-team/pytorch_geometric) 2.0.4
 - SciPy
 - tqdm
-- [tensorboard_logger](https://github.com/TeamHG-Memex/tensorboard_logger)
-- Matplotlib
 
 
 ## How to Use
@@ -26,7 +25,7 @@
 - Download test datasets from [test-datasets-downloading-link](https://drive.google.com/file/d/1WuICJGKRsiTjVTq7_ivh29wWShv8BRBO/view?usp=sharing) and place them in `./data`.
 
 ### Evaluation 
-Our datasets are mostly generated using the code of [*Attention, Learn to Solve Routing Problems!*](https://github.com/wouterkool/attention-learn-to-route). To evaluate our method on your own datasets, use `--path PATH_OF_YOUR_DATASET`.
+To evaluate our method on your own datasets, add `--path PATH_OF_YOUR_DATASET`.
 
 #### For TSP
 ```bash
@@ -113,12 +112,13 @@ python main.py --problem_type pctsp --problem_size 500 --n_subset 10 --eval_batc
 
 ### Training
 
-Please refer to `./local_construction/` and `./heatmap/`.
+Please refer to READMEs in `./local_construction/` and `./heatmap/*/`.
+
 
 ## Acknowledgements
 
-* https://github.com/wouterkool/attention-learn-to-route
-* https://github.com/alstn12088/LCP
-* https://github.com/Spider-scnu/TSP
-* https://github.com/jieyibi/AMDKD
-* https://github.com/yd-kwon/MatNet
+* [Attention, learn to solve routing problems!](https://github.com/wouterkool/attention-learn-to-route)
+* [Learning Collaborative Policies to Solve NP-hard Routing Problems](https://github.com/alstn12088/LCP)
+* [Generalize a small pre-trained model to arbitrarily large TSP instances](https://github.com/Spider-scnu/TSP)
+* [Learning generalizable models for vehicle routing problems via knowledge distillation](https://github.com/jieyibi/AMDKD)
+* [Matrix Encoding Networks for Neural Combinatorial Optimization](https://github.com/yd-kwon/MatNet)

@@ -133,12 +133,14 @@ Please refer to READMEs in `./local_construction/` and `./heatmap/*/`.
 
 😍 If you do find our work helpful (or if you would be so kind as to offer us some encouragement), please consider kindly giving a star, and citing our paper.
 
+```bibtex
 @inproceedings{ye2024glop,
   title={GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time},
   author={Ye, Haoran and Wang, Jiarui and Liang, Helan and Cao, Zhiguang and Li, Yong and Li, Fanzhang},
   booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
   year={2024},
 }
+```
 
 
 ## Acknowledgements

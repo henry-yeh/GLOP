@@ -1,8 +1,18 @@
-# GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time
+# [AAAI 2024] GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time
 
-**Welcome!** This repository contains the code implementation of paper [*GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time*](). GLOP is a unified hierarchical framework that efficiently scales toward large-scale routing problems. It partitions large routing problems into Travelling Salesman Problems (TSPs) and TSPs into Shortest Hamiltonian Path Problems. We hybridize non-autoregressive neural heuristics for coarse-grained problem partitions and autoregressive neural heuristics for fine-grained route constructions.
+**Welcome!** This repository contains the code implementation of paper [*GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time*](/henry-yeh/GLOP/tree/main/assets/GLOP_AAAI24.pdf). GLOP is a unified hierarchical framework that efficiently scales toward large-scale routing problems. It partitions large routing problems into Travelling Salesman Problems (TSPs) and TSPs into Shortest Hamiltonian Path Problems. We hybridize non-autoregressive neural heuristics for coarse-grained problem partitions and autoregressive neural heuristics for fine-grained route constructions.
 
 ![diagram](./diagram.png)
+
+---
+
+## Highlights
+
+- Hybridizing **non-autoregressive** solvers for problem partitions and **autoregressive** solvers for solution constructions.
+- Competitive performance across large-scale **TSP, ATSP, CVRP, and PCTSP**.
+- State-of-the-art scalability and efficiency: reasonable solutions for **TSP100K**, etc.
+
+---
 
 ## Dependencies
 
@@ -15,6 +25,7 @@
 - SciPy
 - tqdm
 
+---
 
 ## How to Use
 
@@ -113,6 +124,21 @@ python main.py --problem_type pctsp --problem_size 500 --n_subset 10 --eval_batc
 ### Training
 
 Please refer to READMEs in `./local_construction/` and `./heatmap/*/`.
+
+---
+
+## Citation
+
+🤩 If you encounter any difficulty using our code, please do not hesitate to submit an issue or directly contact us!
+
+😍 If you do find our work helpful (or if you would be so kind as to offer us some encouragement), please consider kindly giving a star, and citing our paper.
+
+@inproceedings{ye2024glop,
+  title={GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time},
+  author={Ye, Haoran and Wang, Jiarui and Liang, Helan and Cao, Zhiguang and Li, Yong and Li, Fanzhang},
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  year={2024},
+}
 
 
 ## Acknowledgements

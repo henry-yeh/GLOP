@@ -45,6 +45,15 @@ def init(path, opts, partitioner=None): # for cvrplib, partioner is not None, an
         heatmap = infer(partitioner, coors, demand, capacity, k_sparse, is_cvrplib)
         sampler = Sampler(demand, heatmap, capacity, opts.n_partition, 'cpu')
         routes = sampler.gen_subsets(require_prob=False, greedy_mode=greedy_mode) # n_partition, max_len
+    
+        # You can check the capacity constraint by the following code
+        sum_demands = 0
+        for i in range(1, routes.shape[1]):
+            sum_demands += demand[routes[0][i]]
+            if routes[0][i] == 0:
+                assert sum_demands <= capacity, f"capacity: {capacity}, sum_demands: {sum_demands}"
+                sum_demands = 0
+
         assert routes.size(0) == opts.n_partition
         tsp_insts, n_tsps_per_route = trans_tsp(coors.cpu(), routes)
         assert tsp_insts.size(0) == sum(n_tsps_per_route)

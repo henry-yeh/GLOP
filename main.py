@@ -15,6 +15,47 @@ from heatmap.cvrp.infer import load_partitioner
 from heatmap.cvrp.inst import sum_cost
 
 
+from problems.cvrp import load_dataset, concat_list
+
+
+def get_idx(batch_id, tours):
+    "Get solutions in idx format for CVRP"
+    _depot_coor, _coors, _demand, capacity = cvrp_data[batch_id] # batch size is 1
+    coors, demands = concat_list(_depot_coor, _coors, _demand, opts)
+
+    n_tsps, max_seq_len, _ = tours.shape
+    cvrp_idx_solution = []
+    for tsp_idx in range(n_tsps):
+        tsp_idx_solution = []
+        sum_demand = 0
+        for node_idx in range(max_seq_len):
+            node = tours[tsp_idx, node_idx]
+            match = torch.isclose(node, coors, atol=1e-5).all(dim=1)
+            idx = torch.nonzero(match).item()
+            tsp_idx_solution.append(idx)
+            sum_demand += demands[idx]
+        
+        first_depot_idx = tsp_idx_solution.index(0)
+        last_depot_idx = len(tsp_idx_solution) - tsp_idx_solution[::-1].index(0)
+        
+        rolled_tour = [0] + tsp_idx_solution[last_depot_idx:] + tsp_idx_solution[:first_depot_idx]
+            
+        # Here we can check the total demand of each subTSP solution (sub-route)
+        assert sum_demand <= capacity, f"sum_demand: {sum_demand}, capacity: {capacity}"      
+        cvrp_idx_solution.extend(rolled_tour)
+    cvrp_idx_solution.append(0)
+    
+    # Compute the total length of the solution
+    total_length = 0
+    for i in range(len(cvrp_idx_solution)-1):
+        total_length += torch.norm(coors[cvrp_idx_solution[i]] - coors[cvrp_idx_solution[i+1]])
+    print(total_length.item())
+    print(cvrp_idx_solution)
+    return cvrp_idx_solution
+            
+    
+
+
 def eval_dataset(dataset_path, opts):
     pp.pprint(vars(opts))
     
@@ -79,7 +120,12 @@ def _eval_dataset(dataset_path, opts, device, revisers):
         pi_all = torch.tensor(np.array(pi_all).astype(np.int64)).unsqueeze(0)  # (1, n_val*n_subset, max_seq_len)
         assert pi_all.shape == (1, opts.val_size*opts.n_subset, max_seq_len)
     elif opts.problem_type == 'cvrp':
-        from problems.cvrp import init  
+        from problems.cvrp import init
+        
+        # To decode idx:
+        global cvrp_data
+        cvrp_data = load_dataset(dataset_path)
+        
         dataset, n_tsps_per_route_lst = init(dataset_path, opts)
         opts.eval_batch_size = 1
     elif opts.problem_type == 'cvrplib':
@@ -155,6 +201,10 @@ def _eval_dataset(dataset_path, opts, device, revisers):
             subtour_start = sum(n_tsps_per_route[:best_partition_idx])
             tours = tours[subtour_start: subtour_start+n_tsps_per_route[best_partition_idx]]
             assert tours.shape == (n_tsps_per_route[best_partition_idx], max_seq_len, 2)
+            
+            # Get tour idx
+            idx = get_idx(batch_id, tours)
+            
             tours = tours.reshape(-1, 2)
         
         if opts.problem_type == 'pctsp':
@@ -221,6 +271,9 @@ if __name__ == "__main__":
         if opts.width != 1:
             opts.width = 1
             warnings.warn('Set width to 1 for CVRP!')
+        if opts.n_partition != 1:
+            opts.n_partition = 1
+            warnings.warn('Set n_partition to 1 for CVRP!')
     if opts.problem_type == 'pctsp':
         if opts.width != 1:
             opts.width = 1

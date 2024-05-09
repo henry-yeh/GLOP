@@ -221,6 +221,9 @@ if __name__ == "__main__":
         if opts.width != 1:
             opts.width = 1
             warnings.warn('Set width to 1 for CVRP!')
+        if opts.n_partition != 1:
+            opts.n_partition = 1
+            warnings.warn('Set n_partition to 1 for CVRP!')
     if opts.problem_type == 'pctsp':
         if opts.width != 1:
             opts.width = 1

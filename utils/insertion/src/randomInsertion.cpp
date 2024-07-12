@@ -68,7 +68,7 @@ unsigned *Insertion::randomInsertion(unsigned *order)
         // get target list and distances
         // and get insert position with minimum cost
         Node *thisnode = route, *nextnode = thisnode->next;
-        float thisdist = tspi->getdist(thisnode->value, city), nextdist = 0;
+        float thisdist = 0, nextdist = 0;
         Node *minnode = thisnode;
         float mindelta = INFINITY;
         float td = 0.0, nd = 0.0;
@@ -76,14 +76,15 @@ unsigned *Insertion::randomInsertion(unsigned *order)
         for (unsigned j = 0; j < i; j++)
         {
             nextnode = thisnode->next;
-            nextdist = tspi->getdist(nextnode->value, city);
+            thisdist = tspi->getdist(thisnode->value, city);
+            nextdist = tspi->getdist(city, nextnode->value);
             float delta = thisdist + nextdist - nextnode->length;
             if (delta < mindelta)
             {
                 mindelta = delta, minnode = thisnode;
                 td = thisdist, nd = nextdist;
             }
-            thisnode = nextnode, thisdist = nextdist;
+            thisnode = nextnode;
         }
 
         // insert the selected node

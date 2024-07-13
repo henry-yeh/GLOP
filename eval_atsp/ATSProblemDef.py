@@ -110,6 +110,8 @@ if __name__ == '__main__':
     torch.manual_seed(1234)   
     
     dataset_size = 30
-    for scale in [150, 200, 1000]:
+    for scale in [150, 250, 1000]:
         problems = get_random_problems(dataset_size, scale, problem_gen_params)
+        print("instances generated")
         torch.save(problems, "../data/atsp/ATSP{}.pt".format(scale))
+        print(f"created ../data/atsp/ATSP{scale}.pt")

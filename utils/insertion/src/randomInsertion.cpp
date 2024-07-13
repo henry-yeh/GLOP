@@ -55,7 +55,8 @@ unsigned *Insertion::randomInsertion(unsigned *order)
         node2->next = node1;
         node1->next = node2;
         route = node1;
-        node1->length = node2->length = tspi->getdist(node1->value, node2->value);
+        node2->length = tspi->getdist(node1->value, node2->value);
+        node1->length = tspi->getdist(node2->value, node1->value);
     }
 
     for (unsigned i = 2; i < cc; i++)

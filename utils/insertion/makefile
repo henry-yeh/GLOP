@@ -1,13 +1,14 @@
 cxx = g++
-pythonroot = $(shell python3.8 -c "import sys; print(sys.prefix)")
-numpyroot = $(shell python3.8 -c "import numpy,os; print(os.path.dirname(numpy.__file__))")
-cxxflags = -std=c++17 -O3 -fPIC -I$(pythonroot)/include/python3.8 -I$(numpyroot)/core/include/
+pythonversion = $(shell python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+pythonroot = $(shell "python$(pythonversion)" -c "import sys; print(sys.prefix)")
+numpyroot = $(shell "python$(pythonversion)" -c "import numpy,os; print(os.path.dirname(numpy.__file__))")
+cxxflags = -std=c++17 -O3 -fPIC -I$(pythonroot)/include/python$(pythonversion) -I$(numpyroot)/core/include/
 
 sources = $(wildcard src/*.cpp)
 targets := $(patsubst %.cpp,%.o,$(sources))
 depends := $(patsubst %.cpp,%.d,$(sources))
 
-.PHONY: default clean test;
+.PHONY: default clean testtsp testtsp_ne testcvrp;
 
 default: insertion.so;
 

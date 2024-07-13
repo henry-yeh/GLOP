@@ -132,7 +132,10 @@ def revision(tour, inst, tester):
     improved[improved < 0] = 0
 
     return improved.sum().item()
-    
+
+def calc_len(tour, dist):
+    cost = dist[tour, torch.roll(tour, -1, -1)].sum()
+    return cost
 
 def main(n):    
     dataset = torch.load('../data/atsp/ATSP{}.pt'.format(n), map_location='cuda:0')
@@ -143,21 +146,31 @@ def main(n):
                     model_params=model_params,
                     tester_params=tester_params)
     
-    order = torch.randperm(n)
+    
+    torch.random.manual_seed(1)
+    order = torch.randperm(n, device='cpu').numpy()
     
     original_costs = []
     revised_costs = []
+    true_cost = []
     
     start = time.time()
     for inst in dataset:
         tour, cost = random_insertion_non_euclidean(inst, order)
         original_costs.append(cost)
-        improved_cost = revision(torch.tensor(tour.astype(np.int64)), inst, tester)
+
+        tour = torch.tensor(tour.astype(np.int64))
+        cost = calc_len(tour, inst).item()
+        true_cost.append(cost)
+
+        improved_cost = revision(tour, inst, tester)
         revised_costs.append(cost - improved_cost)
+        
     total_duration = time.time() - start
     
-    print("initial costs: ", sum(original_costs) / len(original_costs))
-    print("revised costs: ", sum(revised_costs) / len(revised_costs))
+    print("insertion costs:   ", sum(original_costs) / len(original_costs))
+    print("initial true costs:", sum(true_cost) / len(true_cost))
+    print("revised true costs:", sum(revised_costs) / len(revised_costs))
     print("total duration: ", total_duration)
 
 

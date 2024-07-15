@@ -1,5 +1,7 @@
 # [AAAI 2024] GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time
 
+> ## 🐛 Jul 2024: Thanks to [Wenzheng Pan](https://github.com/wzever), we detected a bug in the insertion for ATSP and are fixing it. You may refer to this [issue](https://github.com/henry-yeh/GLOP/issues/2). Results on other problems are unaffected.
+
 **Welcome!** This repository contains the code implementation of paper [*GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time*](https://arxiv.org/abs/2312.08224). GLOP is a unified hierarchical framework that efficiently scales toward large-scale routing problems. It partitions large routing problems into Travelling Salesman Problems (TSPs) and TSPs into Shortest Hamiltonian Path Problems. We hybridize non-autoregressive neural heuristics for coarse-grained problem partitions and autoregressive neural heuristics for fine-grained route constructions.
 
 ![diagram](./assets/diagram.png)

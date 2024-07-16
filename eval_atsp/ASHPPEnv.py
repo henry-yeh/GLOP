@@ -27,6 +27,7 @@ THE SOFTWARE.
 
 from dataclasses import dataclass
 import torch
+import warnings
 
 from ATSProblemDef import get_random_problems
 
@@ -55,7 +56,7 @@ class ASHPPEnv:
         ####################################
         self.env_params = env_params
         self.node_cnt = env_params['node_cnt']
-        self.pomo_size = env_params['pomo_size']
+        self.pomo_size = env_params['pomo_size'] # pomo size if sample size here
 
         # Const @Load_Problem
         ####################################
@@ -97,14 +98,16 @@ class ASHPPEnv:
         # shape: (batch, node, node)
 
     def reset(self):
-        self.selected_count = 0
-        self.current_node = None
+        self.selected_count = 2 # Add starting and terminating ndoes
+        # Set current nodes as 0
+        self.current_node = torch.zeros((self.batch_size, self.pomo_size), dtype=torch.long)
+
         # shape: (batch, pomo)
-        self.selected_node_list = torch.empty((self.batch_size, self.pomo_size, 0), dtype=torch.long)
+        self.selected_node_list = self.current_node[:, :, None]
         # shape: (batch, pomo, 0~)
-
+        
         self._create_step_state()
-
+        
         reward = None
         done = False
         return Reset_State(problems=self.problems), reward, done
@@ -117,6 +120,14 @@ class ASHPPEnv:
     def pre_step(self):
         reward = None
         done = False
+
+        # Set the starting and terminating nodes to -inf
+        self.step_state.ninf_mask[self.BATCH_IDX, self.POMO_IDX, 0] = float('-inf')
+        self.step_state.ninf_mask[self.BATCH_IDX, self.POMO_IDX, -1] = float('-inf')
+        
+        # Set current node to 0
+        self.step_state.current_node = self.current_node
+
         return self.step_state, reward, done
 
     def step(self, node_idx):
@@ -133,6 +144,9 @@ class ASHPPEnv:
         # returning values
         done = (self.selected_count == self.node_cnt)
         if done:
+            # Concat the terminating node (the last node) to the selected node list
+            self.current_node = torch.ones((self.batch_size, self.pomo_size), dtype=torch.long) * (self.node_cnt - 1)
+            self.selected_node_list = torch.cat((self.selected_node_list, self.current_node[:, :, None]), dim=2)
             reward = -self._get_total_distance()  # Note the MINUS Sign ==> We MAXIMIZE reward
             # shape: (batch, pomo)
         else:    
@@ -147,15 +161,15 @@ class ASHPPEnv:
 
     def _get_total_distance(self):
 
-        node_from = self.selected_node_list
-        # shape: (batch, pomo, node)
-        node_to = self.selected_node_list.roll(dims=2, shifts=-1)
-        # shape: (batch, pomo, node)
-        batch_index = self.BATCH_IDX[:, :, None].expand(self.batch_size, self.pomo_size, self.node_cnt)
-        # shape: (batch, pomo, node)
+        node_from = self.selected_node_list[:, :, :-1]
+        # shape: (batch, pomo, node - 1)
+        node_to = self.selected_node_list.roll(dims=2, shifts=-1)[:, :, :-1]
+        # shape: (batch, pomo, node - 1)
+        batch_index = self.BATCH_IDX[:, :, None].expand(self.batch_size, self.pomo_size, self.node_cnt - 1)
+        # shape: (batch, pomo, node - 1)
 
         selected_cost = self.problems[batch_index, node_from, node_to]
-        # shape: (batch, pomo, node)
+        # shape: (batch, pomo, node - 1)
         total_distance = selected_cost.sum(2)
         # shape: (batch, pomo)
 

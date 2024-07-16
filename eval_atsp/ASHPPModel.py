@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from ATSPModel_LIB import AddAndInstanceNormalization, FeedForward, MixedScore_MultiHeadAttention
 
 
-class ATSPModel(nn.Module):
+class ASHPPModel(nn.Module):
 
     def __init__(self, **model_params):
         super().__init__()
@@ -112,6 +112,7 @@ class ATSPModel(nn.Module):
                 if (prob != 0).all():
                     break
         else:
+            assert self.model_params['eval_type'] == 'greedy'
             selected = all_job_probs.argmax(dim=2)
             # shape: (batch, pomo)
             prob = None

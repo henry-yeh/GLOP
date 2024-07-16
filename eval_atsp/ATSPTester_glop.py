@@ -30,8 +30,8 @@ import torch
 import os
 from logging import getLogger
 
-from ATSPEnv import ATSPEnv as Env
-from ATSPModel import ATSPModel as Model
+from ASHPPEnv import ASHPPEnv as Env
+from ASHPPModel import ASHPPModel as Model
 
 from utils_atsp.utils import get_result_folder, AverageMeter, TimeEstimator
 
@@ -91,16 +91,20 @@ class ATSPTester:
         test_num_episode = insts.size(0)
         episode = 0
         
-        ret = []
+        scores = []
+        
+        solutions = []
 
         while episode < test_num_episode:
 
             remaining = test_num_episode - episode
             batch_size = min(self.tester_params['test_batch_size'], remaining)
 
-            aug_score = self._test_one_batch(episode, episode+batch_size, insts)
+            aug_score, batch_solutions = self._test_one_batch(episode, episode+batch_size, insts)
             
-            ret.append(aug_score)
+            scores.append(aug_score)
+            
+            solutions.append(batch_solutions)
 
             episode += batch_size
 
@@ -117,7 +121,11 @@ class ATSPTester:
             #     self.logger.info(" *** Test Done *** ")
             #     self.logger.info(" NO-AUG SCORE: {:.4f} ".format(score_AM.avg))
             #     self.logger.info(" AUGMENTATION SCORE: {:.4f} ".format(aug_score_AM.avg))
-        return ret
+        
+        scores = torch.cat(scores, dim=0)
+        solutions = torch.cat(solutions, dim=0)
+        
+        return scores, solutions
 
     def _test_one_batch(self, idx_start, idx_end, insts):
 
@@ -127,6 +135,7 @@ class ATSPTester:
         # Augmentation
         ###############################################
         if self.tester_params['augmentation_enable']:
+            assert False, "Augmentation is not supported"
             aug_factor = self.tester_params['aug_factor']
 
             batch_size = aug_factor*batch_size
@@ -152,16 +161,19 @@ class ATSPTester:
 
             # Return
             ###############################################
-            batch_size = batch_size//aug_factor
-            aug_reward = reward.reshape(aug_factor, batch_size, self.env.pomo_size)
-            # shape: (augmentation, batch, pomo)
+            aug_reward = reward.reshape(batch_size, self.env.pomo_size)
+            # shape: (batch, pomo)
+            
+            # Get solutions
+            solutions = self.env.selected_node_list
+            # shape: (batch, pomo, node_cnt)
+            
+            max_pomo_reward, max_pomo_reward_idx = aug_reward.max(dim=1)  # get best results from pomo
+            # shape: (batch)
 
-            max_pomo_reward, _ = aug_reward.max(dim=2)  # get best results from pomo
-            # shape: (augmentation, batch)
-            no_aug_score = -max_pomo_reward[0, :].float().mean()  # negative sign to make positive value
-
-            max_aug_pomo_reward, _ = max_pomo_reward.max(dim=0)  # get best results from augmentation
-            # shape: (batch,)
-            return -max_aug_pomo_reward.float()  # negative sign to make positive value
+            optimal_solution = solutions[torch.arange(batch_size), max_pomo_reward_idx]
+            # shape: (batch, node_cnt)
+            
+            return max_pomo_reward.float(), optimal_solution  # negative sign to make positive value
 
 

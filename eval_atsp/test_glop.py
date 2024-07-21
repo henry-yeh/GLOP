@@ -58,11 +58,7 @@ import numpy as np
 ##### GLOP parameters #####
 N_REVISER = 50 # We only test on Reviser-50; using more revisers requires code modifications
 N_REVISIONS = 3 # number of revision iterations
-N_SAMPLES = {
-    150: 2000,
-    250: 1000,
-    1000: 500
-    } # for sampling decoding during revision
+N_SAMPLES = 500 # for sampling decoding during revision
 
 
 
@@ -73,7 +69,7 @@ env_params = {
         'int_max': 1000*1000,
         'scaler': 1000*1000
     },
-    'pomo_size': 500,
+    'pomo_size': N_SAMPLES,
 }
 
 model_params = {
@@ -215,7 +211,5 @@ def main(n):
 
 if __name__ == "__main__":
     N = int(sys.argv[1])
-    env_params['pomo_size'] = N_SAMPLES.get(N, 500)
-
     main(N)
     

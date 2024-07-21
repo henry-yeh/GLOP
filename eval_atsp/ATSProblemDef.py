@@ -26,6 +26,7 @@ THE SOFTWARE.
 """
 
 import torch
+from tqdm import tqdm
 
 
 def get_random_problems(batch_size, node_cnt, problem_gen_params):
@@ -107,9 +108,14 @@ if __name__ == '__main__':
     if not os.path.exists("../data/atsp"):
         os.mkdir("../data/atsp")
     
-    torch.manual_seed(1234)   
-    
+    torch.manual_seed(1234)
+
     dataset_size = 30
-    for scale in [150, 200, 1000]:
-        problems = get_random_problems(dataset_size, scale, problem_gen_params)
+    for scale in [150, 250, 1000]:
+        problems = []
+        for inst_id in tqdm(range(dataset_size)):
+            problem = get_random_problems(1, scale, problem_gen_params)
+            problems.append(problem)
+        problems = torch.cat(problems, dim=0)
         torch.save(problems, "../data/atsp/ATSP{}.pt".format(scale))
+        print(f"created ../data/atsp/ATSP{scale}.pt")

@@ -55,14 +55,25 @@ import numpy as np
 ##########################################################################################
 # parameters
 
+##### GLOP parameters #####
+N_REVISER = 50 # We only test on Reviser-50; using more revisers requires code modifications
+N_REVISIONS = 3 # number of revision iterations
+N_SAMPLES = {
+    150: 2000,
+    250: 1000,
+    1000: 500
+    } # for sampling decoding during revision
+
+
+
 env_params = {
-    'node_cnt': 50,
+    'node_cnt': N_REVISER, 
     'problem_gen_params': {
         'int_min': 0,
         'int_max': 1000*1000,
         'scaler': 1000*1000
     },
-    'pomo_size': 50  # same as node_cnt
+    'pomo_size': 500,
 }
 
 model_params = {
@@ -77,8 +88,8 @@ model_params = {
     'ms_hidden_dim': 16,
     'ms_layer1_init': (1/2)**(1/2),
     'ms_layer2_init': (1/16)**(1/2),
-    'eval_type': 'softmax',
-    'one_hot_seed_cnt': 20,  # must be >= node_cnt
+    'eval_type': 'softmax', # note here, can be greedy
+    'one_hot_seed_cnt': N_REVISER,  # must be >= node_cnt
 }
 
 tester_params = {
@@ -90,8 +101,8 @@ tester_params = {
     },
     'saved_problem_folder': "../data/n20",
     'saved_problem_filename': 'problem_20_0_1000000_{}.atsp',
-    'test_batch_size': 1,
-    'augmentation_enable': False,
+    'test_batch_size': 999999, # Note this batch size is for revision
+    'augmentation_enable': False, # No augementation for GLOP; requiring code modifications to enable
     'aug_factor': 1,
     'aug_batch_size': 1,
 }
@@ -107,32 +118,58 @@ logger_params = {
 }
 
 
-##########################################################################################
-# main
 
-L = 1.5
+##########################################################################################
+# main    
 
 def revision(tour, inst, tester):
-    revision_len = env_params['node_cnt']
-    assert revision_len == 50
-    sub_tours = tour.reshape(-1, revision_len)
+    sub_tours = tour.reshape(-1, N_REVISER) # shape: (batch, revision_len)
     sub_insts = [inst[sub_tour][:, sub_tour] for sub_tour in sub_tours]
-    original_scores = torch.stack([inst[sub_tour[:-1], torch.roll(sub_tour, shifts=-1)[:-1]].sum() for sub_tour in sub_tours])
-    for sub_inst in sub_insts: # equivalent ATSP of each ASHPP
-        sub_inst[:, 0] += L
-        sub_inst[:, -1] += L
-        sub_inst[0, :] += L
-        sub_inst[-1, :] += L
-        sub_inst[0, 0] = sub_inst[0, -1] = sub_inst[-1, 0] = sub_inst[-1, -1] = 0
+    original_scores = torch.tensor([cal_len_shpp(sub_tour, inst) for sub_tour in sub_tours]) # note that original_scores are positive values
+    # Scale the sub_insts to make the largest value 1
+    scale_coef = [sub_inst.max() for sub_inst in sub_insts]
     sub_insts = torch.stack(sub_insts)
+    sub_insts_scaled = sub_insts / torch.tensor(scale_coef)[:, None, None]
     
-    revised_scores = torch.stack(tester.run(sub_insts)) - 2 * L
-    
-    improved = original_scores - revised_scores
-    improved[improved < 0] = 0
+    # Main part of the revision
+    revised_scores, solutions = tester.run(sub_insts_scaled) # solutions shape: (batch, revision_len)
 
-    return improved.sum().item()
+    # Scale back the revised scores
+    revised_scores = - revised_scores * torch.tensor(scale_coef) # shape: (batch,); add negative sign to make positive value
     
+    # TODO: unmcomment to validate the subtours
+    for i in range(len(sub_insts)):
+        validate_subtour(solutions[i], sub_insts[i], revised_scores[i])
+
+    # Compare the original scores and the revised scores
+    improved_scores = original_scores - revised_scores
+    # subtours should be aranged in the same order as the original tours, if the improved_scores <= 0
+    solutions[improved_scores <= 0] = torch.arange(sub_tours.shape[1])
+    # Gather the subtours according to the solutions
+    revised_tours = sub_tours.gather(1, solutions)
+    # Flatten the revised_tours
+    revised_tours = revised_tours.reshape(-1) # shape: (batch * revision_len) i.e. (node_cnt,)
+    return revised_tours
+
+def validate_subtour(subtour, dist, cost):
+    truth_cost = cal_len_shpp(subtour, dist)
+    assert truth_cost - cost < 1e-5
+    # Assert subtour is a valid tour: (1) the starting node is 0 and the terminal node is len(subtour) - 1; (2) all nodes are visited exactly once.
+    assert subtour[0] == 0 and subtour[-1] == len(subtour) - 1
+    for i in range(1, len(subtour) - 1):
+        assert i in subtour
+
+def validate_tour(tour):
+    for i in range(1, len(tour) - 1):
+        assert i in tour
+
+def cal_len(tour, dist):
+    cost = dist[tour, torch.roll(tour, -1, -1)].sum()
+    return cost.item()
+
+def cal_len_shpp(tour, dist):
+    cost = dist[tour[:-1], tour[1:]].sum()
+    return cost.item()
 
 def main(n):    
     dataset = torch.load('../data/atsp/ATSP{}.pt'.format(n), map_location='cuda:0')
@@ -143,23 +180,42 @@ def main(n):
                     model_params=model_params,
                     tester_params=tester_params)
     
-    order = torch.randperm(n)
+    
+    torch.random.manual_seed(1)
+    order = torch.randperm(n, device='cpu').numpy()
     
     original_costs = []
     revised_costs = []
+    # true_cost = []
+    
+    N_SHIFTS = N_REVISER // N_REVISIONS
     
     start = time.time()
     for inst in dataset:
         tour, cost = random_insertion_non_euclidean(inst, order)
         original_costs.append(cost)
-        improved_cost = revision(torch.tensor(tour.astype(np.int64)), inst, tester)
-        revised_costs.append(cost - improved_cost)
+        tour = torch.tensor(tour.astype(np.int64))
+
+        for revision_iter in range(N_REVISIONS):
+            tour = revision(tour, inst, tester)
+            # Shift the tour to the right by N_SHIFTS
+            tour = torch.roll(tour, shifts=N_SHIFTS, dims=-1)
+
+        # TODO: unmcomment to validate the solution
+        # validate_tour(tour)
+        cost = cal_len(tour, inst)
+        revised_costs.append(cost)
+
     total_duration = time.time() - start
     
-    print("initial costs: ", sum(original_costs) / len(original_costs))
-    print("revised costs: ", sum(revised_costs) / len(revised_costs))
+    print("insertion costs:   ", sum(original_costs) / len(original_costs))
+    print("revised costs:", sum(revised_costs) / len(revised_costs))
     print("total duration: ", total_duration)
 
 
 if __name__ == "__main__":
-    main(int(sys.argv[1]))
+    N = int(sys.argv[1])
+    env_params['pomo_size'] = N_SAMPLES.get(N, 500)
+
+    main(N)
+    

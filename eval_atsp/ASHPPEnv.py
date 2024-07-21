@@ -101,6 +101,8 @@ class ASHPPEnv:
         self.selected_count = 2 # Add starting and terminating ndoes
         # Set current nodes as 0
         self.current_node = torch.zeros((self.batch_size, self.pomo_size), dtype=torch.long)
+        # Set the last node as node - 1
+        self.last_node = torch.ones((self.batch_size, self.pomo_size), dtype=torch.long) * (self.node_cnt - 1)
 
         # shape: (batch, pomo)
         self.selected_node_list = self.current_node[:, :, None]
@@ -127,6 +129,9 @@ class ASHPPEnv:
         
         # Set current node to 0
         self.step_state.current_node = self.current_node
+        # Set last node to node - 1
+        self.step_state.last_node = self.last_node
+        
 
         return self.step_state, reward, done
 

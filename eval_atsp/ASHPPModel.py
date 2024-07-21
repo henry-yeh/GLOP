@@ -80,19 +80,11 @@ class ASHPPModel(nn.Module):
         batch_size = state.BATCH_IDX.size(0)
         pomo_size = state.BATCH_IDX.size(1)
 
-        encoded_current_row = _get_encoding(self.encoded_row, state.current_node)
-
         if (state.current_node == 0).all():
-            # selected = torch.arange(pomo_size)[None, :].expand(batch_size, pomo_size)
-            # prob = torch.ones(size=(batch_size, pomo_size))
+            encoded_last_row = _get_encoding(self.encoded_row, state.last_node)
+            self.decoder.set_q1(encoded_last_row)
 
-            # encoded_rows_mean = self.encoded_row.mean(dim=1, keepdim=True)
-            # encoded_cols_mean = self.encoded_col.mean(dim=1, keepdim=True)
-            # # shape: (batch, 1, embedding)
-            # encoded_first_row = _get_encoding(self.encoded_row, state.current_node)
-            # shape: (batch, pomo, embedding)
-            self.decoder.set_q1(encoded_current_row)
-
+        encoded_current_row = _get_encoding(self.encoded_row, state.current_node)
             
         # shape: (batch, pomo, embedding)
         all_job_probs = self.decoder(encoded_current_row, ninf_mask=state.ninf_mask)

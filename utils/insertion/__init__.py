@@ -21,11 +21,9 @@ def random_insertion(cities, order=None):
         order = np.arange(citycount, dtype=np.uint32)
     else:
         assert len(order.shape) == 1 and order.shape[0] == cities.shape[0]
-        order = _to_numpy(order).astype(np.uint32)
-
-    if cities.dtype is not np.float32:
-        cities = _to_numpy(cities).astype(np.float32)
-
+        
+    order = np.ascontiguousarray(_to_numpy(order), dtype=np.uint32)
+    cities = np.ascontiguousarray(_to_numpy(cities), dtype=np.float32)
     result, cost = insertion.random(cities, order, True)
 
     return result, cost
@@ -37,10 +35,9 @@ def random_insertion_non_euclidean(distmap, order=None):
         order = np.arange(citycount, dtype=np.uint32)
     else:
         assert len(order.shape) == 1 and order.shape[0] == citycount
-        order = _to_numpy(order).astype(np.uint32)
 
-    if distmap.dtype is not np.float32:
-        distmap = _to_numpy(distmap).astype(np.float32)
+    order = np.ascontiguousarray(_to_numpy(order), dtype=np.uint32)
+    distmap = np.ascontiguousarray(_to_numpy(distmap), dtype=np.float32)
 
     result, cost = insertion.random(distmap, order, False)
 
@@ -66,14 +63,10 @@ def cvrp_random_insertion(customerpos, depotpos, demands, capacity, order = None
         order = np.argsort(phi).astype(np.uint32)
     else:
         assert len(order.shape) == 1 and order.shape[0] == ccount
-        order = _to_numpy(order).astype(np.uint32)
 
-    customerpos = _to_numpy(customerpos)
-    if customerpos.dtype is not np.float32:
-        customerpos = customerpos.astype(np.float32)
-    demands = _to_numpy(demands)
-    if demands.dtype is not np.uint32:
-        demands = demands.astype(np.uint32)
+    order = np.ascontiguousarray(_to_numpy(order), dtype=np.uint32)
+    customerpos = np.ascontiguousarray(_to_numpy(customerpos), dtype=np.float32)
+    demands = np.ascontiguousarray(_to_numpy(demands), dtype=np.uint32)
     
     outorder, sep = insertion.cvrp_random(customerpos, depotx, depoty, demands, capacity, order, exploration)
     routes = [outorder[i:j] for i,j in zip(sep, sep[1:])]

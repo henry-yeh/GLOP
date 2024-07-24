@@ -1,9 +1,5 @@
 #include "head.h"
-#include<iostream>
-
-CVRPInsertion::CVRPInsertion(CVRPInstance *_cvrpi){
-	cvrpi = _cvrpi;
-}
+// #include<iostream>
 
 Route* newroute(unsigned depotid){
 	Node* head = new Node;
@@ -14,7 +10,7 @@ Route* newroute(unsigned depotid){
 	Route* route = new Route;
 	route->head = head;
 	route->length = 0.0;
-	route->demand = 0;	
+	route->demand = 0;
 
 	return route;
 }

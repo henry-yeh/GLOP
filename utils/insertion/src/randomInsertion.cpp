@@ -1,14 +1,7 @@
 #include "head.h"
-#include <iostream>
-
-Insertion::Insertion(TSPinstance *tspinstance)
-{
-    tspi = tspinstance;
-}
 
 void Insertion::initState(unsigned *order)
 {
-    cleanup();
     unsigned cc = tspi->citycount;
     Node node;
     Node *lastnode = &node;
@@ -16,22 +9,12 @@ void Insertion::initState(unsigned *order)
     {
         Node *thisnode = new Node;
         thisnode->value = order[i];
-        lastnode = lastnode->next = thisnode;
+        lastnode = (lastnode->next = thisnode);
     }
     vacant = node.next;
     node.next = nullptr;
-    // vacant->printall(cc + 10);
 }
 
-void Insertion::cleanup()
-{
-    if (vacant != nullptr)
-        delete vacant;
-    if (route != nullptr)
-        delete route;
-    vacant = nullptr;
-    route = nullptr;
-}
 
 Node *Insertion::getVacantNode()
 {
@@ -44,7 +27,7 @@ Node *Insertion::getVacantNode()
     return result;
 }
 
-unsigned *Insertion::randomInsertion(unsigned *order)
+void Insertion::randomInsertion(unsigned *order)
 {
     initState(order);
     unsigned cc = tspi->citycount;
@@ -52,9 +35,8 @@ unsigned *Insertion::randomInsertion(unsigned *order)
     {
         Node *node1 = getVacantNode();
         Node *node2 = getVacantNode();
-        node2->next = node1;
+        route = node2->next = node1;
         node1->next = node2;
-        route = node1;
         node2->length = tspi->getdist(node1->value, node2->value);
         node1->length = tspi->getdist(node2->value, node1->value);
     }
@@ -93,48 +75,41 @@ unsigned *Insertion::randomInsertion(unsigned *order)
         pre->next = curr, curr->next = next;
         curr->length = td, next->length = nd;
     }
+}
+
+float Insertion::getResult(unsigned* output){
+    if(output==nullptr || route == nullptr)
+        return -1.0;
+
     // get node order
     Node *node = route;
-    distance = 0.0;
-    unsigned *output = new unsigned[cc];
-    for (unsigned i = 0; i < cc; i++)
+    float distance = 0.0;
+    for (unsigned i = 0; i < tspi->citycount; i++)
     {
         output[i] = node->value;
         distance += node->length;
         node = node->next;
     }
-
-    // cleanup();
-    return output;
+    return distance;
 }
 
-unsigned Node::toList(Node **list, unsigned length)
-{
-    /* returns actual length */
-    unsigned i;
-    Node *curr = this;
-    for (i = 0; i < length && curr != nullptr; i++)
-    {
-        list[i] = curr;
-        curr = curr->next;
+Insertion::~Insertion(){
+    if(route!=nullptr){
+        Node* last, *node = route->next;
+        route->next = nullptr;
+        while(node!=nullptr){
+            node = (last = node)->next;
+            delete last;
+        }
+        route = node = last = nullptr;
     }
-    return i;
-}
-
-void Node::printall(unsigned max)
-{
-    Node *thisnode = this;
-    for (unsigned i = 0; i < max && thisnode != nullptr; i++)
-    {
-        // prevent loops
-        std::cout << thisnode->value << ' ';
-        thisnode = thisnode->next;
+    if(vacant!=nullptr){
+        Node* last, *node = vacant;
+        while(node!=nullptr){
+            node = (last=node)->next;
+            delete last;
+        }
+        vacant = nullptr;
     }
-    std::cout << std::endl;
 }
 
-Node::~Node()
-{
-    if (next != nullptr)
-        delete next;
-}

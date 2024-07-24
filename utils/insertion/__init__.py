@@ -21,12 +21,14 @@ def random_insertion(cities, order=None):
         order = np.arange(citycount, dtype=np.uint32)
     else:
         assert len(order.shape) == 1 and order.shape[0] == cities.shape[0]
-        
+    
     order = np.ascontiguousarray(_to_numpy(order), dtype=np.uint32)
     cities = np.ascontiguousarray(_to_numpy(cities), dtype=np.float32)
-    result, cost = insertion.random(cities, order, True)
+    out = np.zeros_like(order)
+    cost = insertion.random(cities, order, True, out)
+    assert cost > 0
 
-    return result, cost
+    return out, cost
 
 def random_insertion_non_euclidean(distmap, order=None):
     assert len(distmap.shape) == 2 and distmap.shape[1] == distmap.shape[0]
@@ -38,10 +40,11 @@ def random_insertion_non_euclidean(distmap, order=None):
 
     order = np.ascontiguousarray(_to_numpy(order), dtype=np.uint32)
     distmap = np.ascontiguousarray(_to_numpy(distmap), dtype=np.float32)
+    out = np.zeros_like(order)
+    cost = insertion.random(distmap, order, False, out)
+    assert cost > 0
 
-    result, cost = insertion.random(distmap, order, False)
-
-    return result, cost
+    return out, cost
 
 def cvrp_random_insertion(customerpos, depotpos, demands, capacity, order = None, exploration = 1.0):
     assert len(customerpos.shape) == 2 and customerpos.shape[1] == 2

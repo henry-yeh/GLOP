@@ -10,37 +10,32 @@ inline float calc_distance(float* a, float* b){
 class Node
 {
 public:
-    ~Node();
     Node *next = nullptr;
     unsigned value = 0;
     float length = 0;
-    void printall(unsigned max);
-    unsigned toList(Node **list, unsigned length);
 };
 
 class TSPinstance
 {
 public: 
     unsigned citycount;
-    TSPinstance(unsigned cc){
-        this->citycount = cc;
-    };
+    TSPinstance(unsigned cc):citycount(cc){};
     virtual float getdist(unsigned cityA, unsigned cityB){
         return 0.0f;
     };
-    ~TSPinstance(){};
 };
 
 class TSPinstanceEuclidean: public TSPinstance
 {
 public:
-    TSPinstanceEuclidean(unsigned cc, float *cp): TSPinstance(cc){
-        citypos = cp;
-    };
+    TSPinstanceEuclidean(unsigned cc, float *cp): TSPinstance(cc), citypos(cp){};
     float getdist(unsigned a, unsigned b){
         float *p1 = citypos + (a << 1), *p2 = citypos + (b << 1);
         float d1 = *p1 - *p2, d2 = *(p1 + 1) - *(p2 + 1);
         return sqrtf32(d1 * d1 + d2 * d2);
+    };
+    ~TSPinstanceEuclidean(){
+        citypos = nullptr;
     };
 private:
     float *citypos;
@@ -49,11 +44,12 @@ private:
 class TSPinstanceNonEuclidean: public TSPinstance
 {
 public:
-    TSPinstanceNonEuclidean(unsigned cc, float *distmat): TSPinstance(cc){
-        this->distmat = distmat;
-    };
+    TSPinstanceNonEuclidean(unsigned cc, float *distmat): TSPinstance(cc), distmat(distmat){};
     float getdist(unsigned a, unsigned b){
         return distmat[citycount * a + b];
+    };
+    ~TSPinstanceNonEuclidean(){
+        distmat = nullptr;
     };
 private:
     float *distmat;
@@ -62,22 +58,17 @@ private:
 class Insertion
 {
 public:
-    Insertion(TSPinstance *tspi);
-    // ~Insertion();
-    unsigned *randomInsertion(unsigned *order);
-    double getdistance()
-    {
-        return distance;
-    };
+    Insertion(TSPinstance *tspinstance): tspi(tspinstance){};
+    void randomInsertion(unsigned *order);
+    ~Insertion();
+    float getResult(unsigned* output);
 
 private:
     TSPinstance *tspi;
     Node *vacant = nullptr;
     Node *route = nullptr;
-    double distance;
     Node *getVacantNode();
     void initState(unsigned *order);
-    void cleanup();
 };
 
 class CVRPInstance{
@@ -87,13 +78,8 @@ public:
 	unsigned *demand; // n
 	float *depotpos;  // 2
 	unsigned capacity;
-	CVRPInstance(unsigned cc, float* cp, unsigned* dm, float* dp, unsigned cap){
-		citycount = cc;
-		citypos = cp;
-		demand = dm;
-		depotpos = dp;
-		capacity = cap;
-	}
+	CVRPInstance(unsigned cc, float* cp, unsigned* dm, float* dp, unsigned cap):
+        citycount(cc),citypos(cp),demand(dm),depotpos(dp),capacity(cap){};
 	float getdistance(unsigned a, unsigned b){
 		float* p1 = (a<citycount)?citypos + (a<<1):depotpos;
 		float* p2 = (b<citycount)?citypos + (b<<1):depotpos;
@@ -110,7 +96,7 @@ struct CVRPReturn{
 class CVRPInsertion
 {
 public:
-	CVRPInsertion(CVRPInstance* cvrpi);
+	CVRPInsertion(CVRPInstance* cvrpi):cvrpi(cvrpi){};
 	CVRPReturn *randomInsertion(unsigned *order, float exploration);
 
 private:

@@ -7,7 +7,8 @@ def random(
     instance: npt.NDArray[np.float32],
     order: npt.NDArray[np.uint32],
     is_euclidean: bool,
-) -> Tuple[npt.NDArray[np.uint32], float]: ...
+    out: npt.NDArray[np.uint32],
+) -> float: ...
 
 def cvrp_random(
     customerpos: npt.NDArray[np.float32],

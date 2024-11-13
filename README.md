@@ -1,20 +1,22 @@
 # [AAAI 2024] GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time
 
-**Welcome!** This repository contains the code implementation of paper [*GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time*](https://arxiv.org/abs/2312.08224). GLOP is a unified hierarchical framework that efficiently scales toward large-scale routing problems. It partitions large routing problems into Travelling Salesman Problems (TSPs) and TSPs into Shortest Hamiltonian Path Problems. We hybridize non-autoregressive neural heuristics for coarse-grained problem partitions and autoregressive neural heuristics for fine-grained route constructions.
+**Welcome!** This repository contains the code implementation of paper [*GLOP: Learning Global Partition and Local Construction for Solving Large-scale Routing Problems in Real-time*](https://arxiv.org/abs/2312.08224). GLOP is a unified hierarchical framework that efficiently scales toward large-scale routing problems. It partitions large routing problems into Travelling Salesman Problems (TSPs) and TSPs into Shortest Hamiltonian Path Problems (SHPPs). We hybridize non-autoregressive neural heuristics for coarse-grained problem partitions and autoregressive neural heuristics for fine-grained route constructions.
 
 ![diagram](./assets/diagram.png)
 
 ---
 
+## News
+🚀 Oct 2024: We released a [Python library](https://github.com/Furffico/random-insertion) for performing fast random insertion on TSP and SHPP instances
 
->  🐛 Jul 2024: Thanks to [Wenzheng Pan](https://github.com/wzever), we detected a [bug](https://github.com/henry-yeh/GLOP/pull/3) in the insertion for ATSP and fixed it. After the bug fix, GLOP achieves better performance on ATSP; see the below table for the updated results. Results on other problems are unaffected.
+🐛 Jul 2024: Thanks to [Wenzheng Pan](https://github.com/wzever), we detected a [bug](https://github.com/henry-yeh/GLOP/pull/3) in the insertion for ATSP and fixed it. After the bug fix, GLOP achieves better performance on ATSP; see the below table for the updated results. Results on other problems are unaffected.
 
 Version|ATSP150|ATSP250|ATSP1000
 -|-|-|-
 Before| 1.89 (6.4s) | 2.10 (9.6s) | 2.79 (39s)
 After| 1.89 (8.2s) | 2.04 (9.3s) | 2.33 (15s)
 
-
+---
 
 ## Highlights
 

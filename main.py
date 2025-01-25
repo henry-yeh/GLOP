@@ -10,7 +10,7 @@ import time
 from utils.functions import reconnect
 from utils.functions import load_problem
 import pprint as pp
-from utils.insertion import random_insertion
+from utils.insertion import random_insertion_parallel
 from heatmap.cvrp.infer import load_partitioner
 from heatmap.cvrp.inst import sum_cost
 
@@ -66,7 +66,7 @@ def _eval_dataset(dataset_path, opts, device, revisers):
             else:
                 opts.tsp_aug = False
         orders = [torch.randperm(opts.problem_size) for i in range(opts.width)]
-        pi_all = [random_insertion(instance, orders[order_id])[0] for order_id in range(len(orders)) for instance in dataset] # instance: (p_size, 2)
+        pi_all = [random_insertion_parallel(dataset, order) for order in orders] # instance: (p_size, 2)
         pi_all = torch.tensor(np.array(pi_all).astype(np.int64)).reshape(len(orders), opts.val_size, opts.problem_size) # width, val_size, p_size
     elif opts.problem_type == 'pctsp': # dataset (n_cons*val_size, p_size, 2), pi_all (width, n_cons*val_size, p_size), penalty (n_cons, val_size)
         from problems.pctsp import init
@@ -75,8 +75,8 @@ def _eval_dataset(dataset_path, opts, device, revisers):
         dataset = dataset.cpu()
         max_seq_len = dataset.size(1)
         order = torch.arange(max_seq_len) # width=1 by default for pctsp
-        pi_all = [random_insertion(instance, order)[0] for instance in dataset]
-        pi_all = torch.tensor(np.array(pi_all).astype(np.int64)).unsqueeze(0)  # (1, n_val*n_subset, max_seq_len)
+        pi_all = random_insertion_parallel(dataset, order) # (n_val*n_subset, max_seq_len)
+        pi_all = torch.tensor(pi_all.astype(np.int64)).unsqueeze(0)  # (1, n_val*n_subset, max_seq_len)
         assert pi_all.shape == (1, opts.val_size*opts.n_subset, max_seq_len)
     elif opts.problem_type == 'cvrp':
         from problems.cvrp import init  
@@ -112,8 +112,8 @@ def _eval_dataset(dataset_path, opts, device, revisers):
                 assert sum(n_tsps_per_route) == n_subTSPs
                 opts.eval_batch_size = n_subTSPs
                 order = torch.arange(max_seq_len)
-                pi_batch = [random_insertion(instance, order)[0] for instance in batch]
-                pi_batch = torch.tensor(np.array(pi_batch).astype(np.int64))
+                pi_batch = random_insertion_parallel(batch, order)
+                pi_batch = torch.tensor(pi_batch.astype(np.int64))
                 assert pi_batch.shape == (n_subTSPs, max_seq_len)
                 seed = batch.gather(1, pi_batch.unsqueeze(-1).repeat(1,1,2))
                 assert seed.shape == (n_subTSPs, max_seq_len, 2)

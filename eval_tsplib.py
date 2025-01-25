@@ -9,7 +9,7 @@ import time
 from utils.functions import reconnect
 from utils.functions import load_problem
 import pprint as pp
-from utils.insertion import random_insertion
+from utils.insertion import random_insertion_parallel
 
 torch.manual_seed(1)
 
@@ -76,8 +76,8 @@ def _eval_dataset(dataset, opts, device, revisers):
             orders = [torch.randperm(problem_size) for i in range(width)]
             
             start = time.time()
-            pi_batch = [random_insertion(instance, orders[order_id])[0] for order_id in range(len(orders)) for instance in batch]
-            pi_batch = torch.tensor(np.array(pi_batch).astype(np.int64)).reshape(-1, problem_size)
+            pi_batch = [random_insertion_parallel(batch, order).astype(np.int64) for order in orders]
+            pi_batch = torch.tensor(pi_batch).reshape(-1, problem_size)
             total_time += time.time() - start
 
             batch = batch.repeat(width, 1, 1)

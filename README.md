@@ -36,6 +36,7 @@ After| 1.89 (8.2s) | 2.04 (9.3s) | 2.33 (15s)
 - [PyTorch Geometric](https://github.com/pyg-team/pytorch_geometric) 2.0.4
 - SciPy
 - tqdm
+- [random-insertion](https://github.com/Furffico/random-insertion)>=0.3.0
 
 ---
 

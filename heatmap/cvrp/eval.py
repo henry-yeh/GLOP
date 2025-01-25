@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from utils.functions import load_problem, reconnect
-from utils.insertion import random_insertion
+from utils.insertion import random_insertion_parallel
 from heatmap.cvrp.inst import sum_cost
 
 problem = load_problem('tsp')
@@ -13,8 +13,8 @@ def eval(tsp_insts, n_tsps_per_route, opts):
     p_size = tsp_insts.size(1)
     seeds = tsp_insts
     order = torch.arange(p_size)
-    pi_all = [random_insertion(instance, order)[0] for instance in seeds]
-    pi_all = torch.tensor(np.array(pi_all).astype(np.int64), device=seeds.device).reshape(-1, p_size)
+    pi_all = random_insertion_parallel(seeds, order)
+    pi_all = torch.tensor(pi_all.astype(np.int64), device=seeds.device).reshape(-1, p_size)
     seeds = seeds.gather(1, pi_all.unsqueeze(-1).expand_as(seeds))
     tours, costs_revised = reconnect( 
                                 get_cost_func=get_cost_func,

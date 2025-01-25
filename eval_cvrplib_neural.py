@@ -10,7 +10,7 @@ import time
 from utils.functions import reconnect
 from utils.functions import load_problem
 import pprint as pp
-from utils.insertion import random_insertion
+from utils.insertion import random_insertion_parallel
 from heatmap.cvrp.infer import load_partitioner
 from heatmap.cvrp.inst import sum_cost
 from problems.cvrp import init  
@@ -99,8 +99,8 @@ def _eval_dataset(dataset_path, opts, device, revisers, partitioner):
             assert sum(n_tsps_per_route) == n_subTSPs
             opts.eval_batch_size = n_subTSPs
             order = torch.arange(max_seq_len)
-            pi_batch = [random_insertion(instance, order)[0] for instance in batch]
-            pi_batch = torch.tensor(np.array(pi_batch).astype(np.int64))
+            pi_batch = random_insertion_parallel(batch, order)
+            pi_batch = torch.tensor(pi_batch.astype(np.int64))
             assert pi_batch.shape == (n_subTSPs, max_seq_len)
             seed = batch.gather(1, pi_batch.unsqueeze(-1).repeat(1,1,2))
             assert seed.shape == (n_subTSPs, max_seq_len, 2)
